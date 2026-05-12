@@ -1,0 +1,24 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/detail/detail",
+    "pages/admin/list/index",
+    "pages/admin/form/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "河北大学校友地图",
+    "navigationBarBackgroundColor": "#0b5d4a",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#f5f7f8"
+  },
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于显示你与校友之家的距离并发起地图导航"
+    }
+  },
+  "requiredPrivateInfos": [
+    "getLocation",
+    "chooseLocation"
+  ],
+  "sitemapLocation": "sitemap.json"
+}

@@ -1,0 +1,422 @@
+.page {
+  min-height: 100vh;
+  background: #f5f7f8;
+}
+
+.photo-swiper {
+  width: 100%;
+  height: 460rpx;
+  background: #dfe7e4;
+}
+
+.photo {
+  width: 100%;
+  height: 100%;
+}
+
+.photo-placeholder {
+  display: flex;
+  height: 420rpx;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #dfe7e4;
+}
+
+/* ---------- Video Card ---------- */
+
+.video-card {
+  position: relative;
+  width: 100%;
+  height: 360rpx;
+  overflow: hidden;
+  background: #1a2b25;
+}
+
+.video-poster {
+  width: 100%;
+  height: 100%;
+}
+
+.video-placeholder-bg {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #1a2b25 0%, #2d4a3f 100%);
+}
+
+.video-play-btn {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16rpx;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.video-play-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  color: #0b5d4a;
+  font-size: 36rpx;
+  padding-left: 6rpx;
+  box-sizing: border-box;
+}
+
+.video-play-label {
+  color: #ffffff;
+  font-size: 26rpx;
+  text-shadow: 0 1rpx 4rpx rgba(0, 0, 0, 0.5);
+}
+
+.placeholder-title {
+  color: #0b5d4a;
+  font-size: 34rpx;
+  font-weight: 700;
+}
+
+.placeholder-subtitle {
+  margin-top: 12rpx;
+  color: #5d6c67;
+  font-size: 24rpx;
+}
+
+.content {
+  padding: 34rpx 28rpx 42rpx;
+}
+
+.city {
+  color: #d18a18;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.name {
+  margin-top: 10rpx;
+  color: #17201d;
+  font-size: 42rpx;
+  font-weight: 800;
+  line-height: 1.24;
+}
+
+.description {
+  margin-top: 18rpx;
+  color: #4e5c57;
+  font-size: 28rpx;
+  line-height: 1.7;
+}
+
+.desc-line {
+  min-height: 1.7em;
+  white-space: pre-wrap;
+}
+
+.action-row {
+  display: flex;
+  gap: 18rpx;
+  margin-top: 30rpx;
+}
+
+.primary-action,
+.secondary-action {
+  flex: 1;
+  height: 80rpx;
+  font-size: 28rpx;
+  font-weight: 700;
+}
+
+.primary-action {
+  background: #0b5d4a;
+  color: #ffffff;
+}
+
+.secondary-action {
+  border: 1rpx solid #cbd8d3;
+  background: #ffffff;
+  color: #17201d;
+}
+
+.section {
+  margin-top: 34rpx;
+  padding-top: 28rpx;
+  border-top: 1rpx solid #e2e9e6;
+}
+
+.section-title {
+  color: #17201d;
+  font-size: 30rpx;
+  font-weight: 800;
+}
+
+.service-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14rpx;
+  margin-top: 18rpx;
+}
+
+.service-item {
+  padding: 12rpx 18rpx;
+  border-radius: 6px;
+  background: #e8f3ef;
+  color: #0b5d4a;
+  font-size: 24rpx;
+  line-height: 1.2;
+}
+
+.info-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24rpx;
+  padding: 22rpx 0;
+  border-bottom: 1rpx solid #e9eeec;
+}
+
+.info-row:last-child {
+  border-bottom: 0;
+}
+
+.copyable {
+  color: #0b5d4a;
+  border-bottom: 1rpx dashed #0b5d4a;
+}
+
+.info-label {
+  flex: 0 0 150rpx;
+  color: #6b7874;
+  font-size: 26rpx;
+}
+
+.info-value {
+  flex: 1;
+  color: #17201d;
+  font-size: 27rpx;
+  text-align: right;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+.address-card {
+  margin-top: 18rpx;
+  padding: 24rpx;
+  border: 1rpx solid #dce5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #283531;
+  font-size: 28rpx;
+  line-height: 1.6;
+}
+
+/* ---------- Reviews ---------- */
+
+.reviews-loading,
+.reviews-empty {
+  padding: 48rpx 0;
+  text-align: center;
+  color: #6d7a75;
+  font-size: 26rpx;
+}
+
+.review-card {
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid #eef2f0;
+}
+
+.review-card:last-child {
+  border-bottom: 0;
+}
+
+.review-header {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.review-avatar {
+  flex: 0 0 52rpx;
+  width: 52rpx;
+  height: 52rpx;
+  border-radius: 50%;
+  background: #0b5d4a;
+  color: #ffffff;
+  font-size: 24rpx;
+  font-weight: 700;
+  line-height: 52rpx;
+  text-align: center;
+}
+
+.review-author {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.review-nickname {
+  color: #17201d;
+  font-size: 26rpx;
+  font-weight: 600;
+}
+
+.review-date {
+  color: #8d9b95;
+  font-size: 20rpx;
+}
+
+.review-stars {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 2rpx;
+}
+
+.review-stars .star,
+.rating-stars .star-input {
+  font-size: 28rpx;
+  color: #d0d8d4;
+}
+
+.review-stars .star.filled,
+.rating-stars .star-input.filled {
+  color: #d89b2b;
+}
+
+.review-body {
+  margin-top: 14rpx;
+  color: #2b3a35;
+  font-size: 26rpx;
+  line-height: 1.65;
+}
+
+.review-photos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+  margin-top: 14rpx;
+}
+
+.review-photo {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 6px;
+  background: #dfe7e4;
+}
+
+/* ---------- Review Form ---------- */
+
+.form-field {
+  margin-top: 24rpx;
+}
+
+.form-label {
+  display: block;
+  color: #4e5c57;
+  font-size: 24rpx;
+  font-weight: 600;
+  margin-bottom: 10rpx;
+}
+
+.form-input {
+  height: 64rpx;
+  padding: 0 20rpx;
+  border: 1rpx solid #dbe4e0;
+  border-radius: 6px;
+  background: #f7faf9;
+  color: #17201d;
+  font-size: 26rpx;
+  box-sizing: border-box;
+}
+
+.rating-stars {
+  display: flex;
+  gap: 8rpx;
+  padding: 6rpx 0;
+}
+
+.rating-stars .star-input {
+  font-size: 44rpx;
+}
+
+.review-textarea {
+  width: 100%;
+  min-height: 140rpx;
+  padding: 16rpx 20rpx;
+  border: 1rpx solid #dbe4e0;
+  border-radius: 6px;
+  background: #f7faf9;
+  color: #17201d;
+  font-size: 26rpx;
+  line-height: 1.6;
+  box-sizing: border-box;
+}
+
+.photo-upload-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14rpx;
+}
+
+.upload-preview {
+  position: relative;
+  width: 140rpx;
+  height: 140rpx;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.upload-image {
+  width: 100%;
+  height: 100%;
+}
+
+.upload-remove {
+  position: absolute;
+  top: -8rpx;
+  right: -8rpx;
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #ffffff;
+  font-size: 28rpx;
+  line-height: 36rpx;
+  text-align: center;
+}
+
+.upload-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 140rpx;
+  height: 140rpx;
+  border: 2rpx dashed #cbd8d3;
+  border-radius: 6px;
+  background: #f7faf9;
+}
+
+.upload-add-icon {
+  color: #8d9b95;
+  font-size: 48rpx;
+  line-height: 1;
+}
+
+.submit-btn {
+  margin-top: 30rpx;
+  height: 76rpx;
+  border-radius: 8px;
+  background: #0b5d4a;
+  color: #ffffff;
+  font-size: 28rpx;
+  font-weight: 700;
+}
+
+.submit-btn.disabled {
+  background: #cbd8d3;
+  color: #7c8a85;
+}

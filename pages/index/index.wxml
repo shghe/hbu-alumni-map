@@ -1,0 +1,85 @@
+<view class="page">
+  <map
+    id="alumniMap"
+    class="map"
+    latitude="{{center.latitude}}"
+    longitude="{{center.longitude}}"
+    scale="{{scale}}"
+    markers="{{markers}}"
+    show-location="{{showUserLocation}}"
+    enable-traffic="{{trafficEnabled}}"
+    bindmarkertap="handleMarkerTap"
+    bindcallouttap="handleMarkerTap"
+  />
+
+  <view class="header">
+    <view class="header-left">
+      <view class="eyebrow">Hebei University Alumni</view>
+      <view class="title-row">
+        <view class="title">HBU校友之家地图</view>
+        <picker mode="selector" range="{{cities}}" value="{{cityIndex}}" bindchange="selectCity">
+          <view class="city-picker">{{selectedCity}} ▾</view>
+        </picker>
+      </view>
+      <view class="summary">{{visibleHomes.length}} 个校友之家</view>
+    </view>
+    <view class="header-actions">
+      <view class="admin-entry" bindtap="openAdmin">⚙</view>
+      <button class="locate-button" bindtap="moveToUserLocation">定位</button>
+    </view>
+  </view>
+
+  <view class="panel safe-bottom">
+    <view class="search-row">
+      <input
+        class="search-input"
+        placeholder="搜索城市、服务、校友之家"
+        value="{{keyword}}"
+        confirm-type="search"
+        bindinput="handleKeywordInput"
+      />
+      <button class="traffic-button {{trafficEnabled ? 'active' : ''}}" bindtap="toggleTraffic">路况</button>
+    </view>
+
+    <scroll-view class="filter-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="filter-list">
+        <button
+          wx:for="{{serviceOptions}}"
+          wx:key="*this"
+          class="filter-chip {{selectedService === item ? 'active' : ''}}"
+          data-service="{{item}}"
+          bindtap="selectService"
+        >
+          {{item}}
+        </button>
+      </view>
+    </scroll-view>
+
+    <scroll-view class="home-list" scroll-y enhanced show-scrollbar="{{false}}">
+      <view
+        wx:for="{{visibleHomes}}"
+        wx:key="id"
+        class="home-card"
+        data-dbid="{{item.dbId}}"
+        bindtap="openDetail"
+      >
+        <view class="home-main">
+          <view class="home-title">{{item.name}}</view>
+          <view class="home-meta">{{item.city}} · {{item.hours}}</view>
+          <view class="home-address" data-dbid="{{item.dbId}}" catchtap="openLocation">{{item.address}}</view>
+          <view class="tag-row">
+            <text wx:for="{{item.services}}" wx:key="*this" class="tag">{{item}}</text>
+          </view>
+        </view>
+        <view class="card-actions">
+          <button class="nav-button" data-dbid="{{item.dbId}}" catchtap="openLocation">导航</button>
+          <view wx:if="{{item.distanceText}}" class="distance">{{item.distanceText}}</view>
+        </view>
+      </view>
+
+      <view wx:if="{{visibleHomes.length === 0}}" class="empty">
+        暂无匹配的校友之家
+      </view>
+    </scroll-view>
+  </view>
+</view>

@@ -1,0 +1,128 @@
+<scroll-view class="page safe-bottom" scroll-y>
+  <view class="header">
+    <button class="back-btn" bindtap="goBack">← 返回</button>
+    <text class="header-title">{{isEdit ? '编辑' : '新增'}}校友之家</text>
+  </view>
+
+  <view class="form">
+    <!-- Name -->
+    <view class="field">
+      <text class="label">名称 <text class="required">*</text></text>
+      <input class="input" placeholder="校友之家名称" value="{{form.name}}" bindinput="onField" data-field="name" />
+    </view>
+
+    <!-- Province / City -->
+    <view class="field">
+      <text class="label">所在地区 <text class="required">*</text></text>
+      <view class="region-row">
+        <picker mode="selector" range="{{provinces}}" value="{{provinceIndex}}" bindchange="onProvinceChange">
+          <view class="picker">{{form.province}}</view>
+        </picker>
+        <text class="region-sep">/</text>
+        <picker mode="selector" range="{{cityList}}" value="{{cityIndex}}" bindchange="onCityChange">
+          <view class="picker">{{form.city}}</view>
+        </picker>
+      </view>
+    </view>
+
+    <!-- Location -->
+    <view class="field">
+      <text class="label">位置 <text class="required">*</text></text>
+      <button class="locate-btn" bindtap="chooseLocation">在地图上选择位置</button>
+      <view wx:if="{{form.latitude}}" class="coord-row">
+        <text class="coord-text">纬度：{{form.latitude}}</text>
+        <text class="coord-text">经度：{{form.longitude}}</text>
+      </view>
+    </view>
+
+    <!-- Address -->
+    <view class="field">
+      <text class="label">地址</text>
+      <input class="input" placeholder="详细地址，如：河北省保定市五四东路180号" value="{{form.address}}" bindinput="onField" data-field="address" />
+    </view>
+
+    <!-- Contact -->
+    <view class="field">
+      <text class="label">联系人</text>
+      <input class="input" placeholder="联系人姓名" value="{{form.contactName}}" bindinput="onField" data-field="contactName" />
+    </view>
+
+    <view class="field">
+      <text class="label">电话</text>
+      <input class="input" placeholder="联系电话" value="{{form.phone}}" bindinput="onField" data-field="phone" />
+    </view>
+
+    <view class="field">
+      <text class="label">微信</text>
+      <input class="input" placeholder="微信号" value="{{form.wechat}}" bindinput="onField" data-field="wechat" />
+    </view>
+
+    <view class="field">
+      <text class="label">服务时间</text>
+      <input class="input" placeholder="周一至周五 09:00-18:00" value="{{form.hours}}" bindinput="onField" data-field="hours" />
+    </view>
+
+    <!-- Services -->
+    <view class="field">
+      <text class="label">服务标签</text>
+      <view class="tag-row">
+        <input class="input tag-input" placeholder="输入标签" value="{{newService}}" bindinput="inputService" />
+        <button class="tag-add-btn" bindtap="addService">添加</button>
+      </view>
+      <view class="tags">
+        <view wx:for="{{form.services}}" wx:key="*this" class="tag">
+          <text>{{item}}</text>
+          <text class="tag-x" data-index="{{index}}" bindtap="removeService">×</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- Description -->
+    <view class="field">
+      <text class="label">描述</text>
+      <textarea class="textarea" placeholder="校友之家详细介绍（最多2000字）" value="{{form.description}}" bindinput="onField" data-field="description" maxlength="2000" />
+    </view>
+
+    <!-- Photos -->
+    <view class="field">
+      <text class="label">照片</text>
+      <view class="photo-grid">
+        <view wx:for="{{form.photos}}" wx:key="*this" class="photo-item">
+          <image src="{{item}}" mode="aspectFill" class="photo-img" />
+          <text class="photo-x" data-index="{{index}}" bindtap="removePhoto">×</text>
+        </view>
+        <view wx:if="{{form.photos.length < 10}}" class="photo-add" bindtap="choosePhotos">
+          <text class="photo-add-icon">+</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- Video -->
+    <view class="field">
+      <text class="label">视频介绍</text>
+      <view wx:if="{{form.video}}" class="video-preview-row">
+        <text class="video-name">{{form.videoName || '已选择视频'}}</text>
+        <text class="video-x" bindtap="removeVideo">×</text>
+      </view>
+      <button wx:else class="upload-btn" bindtap="chooseVideo">选择视频</button>
+    </view>
+
+    <view class="field">
+      <text class="label">视频封面（可选）</text>
+      <view class="photo-grid">
+        <view wx:if="{{form.videoPoster}}" class="photo-item">
+          <image src="{{form.videoPoster}}" mode="aspectFill" class="photo-img" />
+          <text class="photo-x" bindtap="removePoster">×</text>
+        </view>
+        <view wx:else class="photo-add" bindtap="choosePoster">
+          <text class="photo-add-icon">+</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- Save -->
+    <button class="save-btn {{saving ? 'disabled' : ''}}" disabled="{{saving}}" bindtap="save">
+      {{saving ? '保存中...' : '保存'}}
+    </button>
+  </view>
+</scroll-view>

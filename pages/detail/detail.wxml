@@ -1,0 +1,173 @@
+<scroll-view class="page safe-bottom" scroll-y enhanced show-scrollbar="{{false}}">
+  <swiper
+    wx:if="{{home.photos.length > 0}}"
+    class="photo-swiper"
+    indicator-dots
+    circular
+    autoplay
+    interval="4200"
+  >
+    <swiper-item wx:for="{{home.photos}}" wx:key="*this">
+      <image
+        class="photo"
+        src="{{item}}"
+        mode="aspectFill"
+        lazy-load
+        data-index="{{index}}"
+        bindtap="previewPhoto"
+      />
+    </swiper-item>
+  </swiper>
+
+  <view wx:else class="photo-placeholder">
+    <view class="placeholder-title">校友之家照片</view>
+    <view class="placeholder-subtitle">可在 data/homes.js 中补充图片路径</view>
+  </view>
+
+  <view wx:if="{{home.video}}" class="video-card" bindtap="playVideo">
+    <image wx:if="{{home.videoPoster}}" class="video-poster" src="{{home.videoPoster}}" mode="aspectFill" />
+    <view wx:else class="video-placeholder-bg" />
+    <view class="video-play-btn">
+      <text class="video-play-icon">▶</text>
+      <text class="video-play-label">播放视频介绍</text>
+    </view>
+  </view>
+
+  <view class="content">
+    <view class="city">{{home.city}}</view>
+    <view class="name">{{home.name}}</view>
+    <view class="description">
+      <view wx:for="{{home.descriptionLines}}" wx:key="*this" class="desc-line">{{item}}{{item === '' ? ' ' : ''}}</view>
+    </view>
+
+    <view class="action-row">
+      <button class="primary-action" bindtap="openLocation">地图导航</button>
+      <button class="secondary-action" bindtap="makePhoneCall">拨打电话</button>
+    </view>
+
+    <view class="section">
+      <view class="section-title">服务内容</view>
+      <view class="service-grid">
+        <text wx:for="{{home.services}}" wx:key="*this" class="service-item">{{item}}</text>
+      </view>
+    </view>
+
+    <view class="section">
+      <view class="section-title">联系信息</view>
+      <view class="info-row">
+        <text class="info-label">联系人</text>
+        <text class="info-value">{{home.contactName}}</text>
+      </view>
+      <view class="info-row">
+        <text class="info-label">电话</text>
+        <text class="info-value">{{home.phone}}</text>
+      </view>
+      <view class="info-row copyable" bindtap="copyWechat">
+        <text class="info-label">微信</text>
+        <text class="info-value">{{home.wechat}}</text>
+      </view>
+      <view class="info-row">
+        <text class="info-label">服务时间</text>
+        <text class="info-value">{{home.hours}}</text>
+      </view>
+    </view>
+
+    <view class="section">
+      <view class="section-title">地址</view>
+      <view class="address-card" bindtap="copyAddress">
+        {{home.address}}
+      </view>
+    </view>
+
+    <!-- Reviews -->
+    <view class="section">
+      <view class="section-title">校友评价</view>
+
+      <view wx:if="{{reviewsLoading}}" class="reviews-loading">加载中...</view>
+
+      <view wx:elif="{{reviews.length === 0}}" class="reviews-empty">暂无评价，来写第一条吧</view>
+
+      <view wx:for="{{reviews}}" wx:key="_id" wx:for-item="r" wx:for-index="rIdx" class="review-card">
+        <view class="review-header">
+          <view class="review-avatar">{{r.avatar}}</view>
+          <view class="review-author">
+            <text class="review-nickname">{{r.nickname}}</text>
+            <text class="review-date">{{r.createTime}}</text>
+          </view>
+          <view class="review-stars">
+            <text wx:for="{{5}}" wx:key="*this" class="star {{r.rating > index ? 'filled' : ''}}">★</text>
+          </view>
+        </view>
+        <view class="review-body">{{r.content}}</view>
+        <view wx:if="{{r.photos && r.photos.length > 0}}" class="review-photos">
+          <image
+            wx:for="{{r.photos}}"
+            wx:key="*this"
+            wx:for-item="photo"
+            class="review-photo"
+            src="{{photo}}"
+            mode="aspectFill"
+            data-review="{{rIdx}}"
+            data-url="{{photo}}"
+            bindtap="previewReviewPhoto"
+          />
+        </view>
+      </view>
+    </view>
+
+    <!-- Write Review -->
+    <view class="section">
+      <view class="section-title">写评价</view>
+
+      <view class="form-field">
+        <text class="form-label">昵称</text>
+        <input class="form-input" placeholder="你的昵称" value="{{nickname}}" bindinput="inputNickname" />
+      </view>
+
+      <view class="form-field">
+        <text class="form-label">评分</text>
+        <view class="rating-stars">
+          <text
+            wx:for="{{5}}"
+            wx:key="*this"
+            class="star-input {{myRating > index ? 'filled' : ''}}"
+            data-rating="{{index + 1}}"
+            bindtap="setRating"
+          >★</text>
+        </view>
+      </view>
+
+      <view class="form-field">
+        <text class="form-label">评价</text>
+        <textarea
+          class="review-textarea"
+          placeholder="分享你的体验..."
+          value="{{reviewContent}}"
+          bindinput="inputReviewContent"
+          maxlength="-1"
+        />
+      </view>
+
+      <view class="form-field">
+        <text class="form-label">照片</text>
+        <view class="photo-upload-row">
+          <view wx:for="{{selectedPhotos}}" wx:key="*this" class="upload-preview">
+            <image class="upload-image" src="{{item}}" mode="aspectFill" />
+            <view class="upload-remove" data-index="{{index}}" bindtap="removePhoto">×</view>
+          </view>
+          <view wx:if="{{selectedPhotos.length < 6}}" class="upload-add" bindtap="choosePhotos">
+            <text class="upload-add-icon">+</text>
+          </view>
+        </view>
+      </view>
+
+      <button
+        class="submit-btn {{!(myRating && reviewContent) || submitting ? 'disabled' : ''}}"
+        disabled="{{!(myRating && reviewContent) || submitting}}"
+        bindtap="submitReview"
+      >
+        {{submitting ? '提交中...' : '提交评价'}}
+      </button>
+    </view>
+  </view>
+</scroll-view>
