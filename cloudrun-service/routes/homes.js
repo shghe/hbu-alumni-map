@@ -27,6 +27,8 @@ router.get('/', async (req, res) => {
         ...home,
         _id: String(home.id),
         dbId: String(home.id),
+        contactName: home.contact_name,
+        videoPoster: home.video_poster,
         photos: photos.filter(p => p.url).map(p => p.url),
         services: services.map(s => s.service)
       })
@@ -63,6 +65,8 @@ router.get('/:id', async (req, res) => {
         ...home,
         _id: String(home.id),
         id: String(home.id),
+        contactName: home.contact_name,
+        videoPoster: home.video_poster,
         photos: photos.map(p => p.url),
         services: services.map(s => s.service)
       }
