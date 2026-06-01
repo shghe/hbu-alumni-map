@@ -1,44 +1,36 @@
 /**
  * 统一 API 请求封装
+ * 通过代理云函数转发到云托管，不需要域名白名单
  */
 
-const API_BASE = 'https://alumni-api-264838-4-1430752917.sh.run.tcloudbase.com/api'
-
-function request(method, path, data, options = {}) {
+function request(method, path, data) {
   return new Promise((resolve, reject) => {
-    const header = { 'Content-Type': 'application/json' }
-    if (options.auth) {
-      const token = getApp().globalData.adminToken
-      if (token) header['Authorization'] = `Bearer ${token}`
-    }
-    wx.request({
-      url: `${API_BASE}${path}`,
-      method,
-      data,
-      header,
-      success: (res) => {
-        if (res.statusCode === 200) resolve(res.data)
-        else if (res.statusCode === 401) {
-          getApp().globalData.adminToken = ''
-          reject(new Error('登录已过期'))
-        } else reject(new Error((res.data && res.data.message) || '请求失败'))
-      },
-      fail: (err) => reject(err)
+    wx.cloud.callFunction({
+      name: 'api-proxy',
+      data: { method, path, data }
+    }).then((res) => {
+      if (res.result && res.result.code !== undefined) {
+        resolve(res.result)
+      } else {
+        reject(new Error('请求失败'))
+      }
+    }).catch((err) => {
+      reject(err)
     })
   })
 }
 
 const api = {
-  get: (path, params, opts) => {
+  get: (path, params) => {
     const query = params ? '?' + Object.entries(params)
       .filter(([, v]) => v !== undefined && v !== null)
       .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
       .join('&') : ''
-    return request('GET', path + query, undefined, opts)
+    return request('GET', path + query)
   },
-  post: (path, data, opts) => request('POST', path, data, opts),
-  put: (path, data, opts) => request('PUT', path, data, opts),
-  del: (path, opts) => request('DELETE', path, undefined, opts)
+  post: (path, data) => request('POST', path, data),
+  put: (path, data) => request('PUT', path, data),
+  del: (path) => request('DELETE', path)
 }
 
-module.exports = { api, API_BASE }
+module.exports = { api }
