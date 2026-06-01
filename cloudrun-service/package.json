@@ -12,7 +12,6 @@
     "cos-nodejs-sdk-v5": "^2.14.0",
     "express": "^4.21.0",
     "jsonwebtoken": "^9.0.2",
-    "mysql2": "^3.11.0",
-    "wx-server-sdk": "latest"
+    "mysql2": "^3.11.0"
   }
 }
