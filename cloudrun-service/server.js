@@ -13,6 +13,17 @@ const { initDB } = require('./utils/db')
 const app = express()
 const PORT = process.env.PORT || 80
 
+// ---------- 照片迁移 cloud:// → COS https://（每次处理3个文件）----------
+app.get('/api/migrate-photos', async (req, res) => {
+  try {
+    const { migrateNextBatch } = require('./scripts/migrate-photos')
+    const report = await migrateNextBatch(3)
+    res.json({ ok: true, ...report })
+  } catch (err) {
+    res.status(500).json({ ok: false, message: err.message })
+  }
+})
+
 // ---------- 数据迁移（一次性） ----------
 app.get('/api/migrate', async (req, res) => {
   try {

@@ -4,6 +4,6 @@ App({
     adminToken: ''
   },
   onLaunch() {
-    // 云托管模式：不再使用 wx.cloud.init()
+    wx.cloud.init({ env: 'prod-d2gq9dsgy570dcb29', traceUser: false })
   }
 })
