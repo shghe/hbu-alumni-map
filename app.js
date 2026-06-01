@@ -4,6 +4,6 @@ App({
     adminToken: ''
   },
   onLaunch() {
-    wx.cloud.init({ env: 'cloud1-d7gxbwt5z89029dd1' })
+    wx.cloud.init({ env: 'prod-d2gq9dsgy570dcb29' })
   }
 })

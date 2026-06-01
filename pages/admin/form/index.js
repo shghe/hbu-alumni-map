@@ -314,9 +314,9 @@ Page({
 
       let res
       if (isEdit) {
-        res = await api.put(`/admin/homes/${homeId}`, data, { auth: true })
+        res = await api.put(`/admin/homes/${homeId}`, data)
       } else {
-        res = await api.post('/admin/homes', data, { auth: true })
+        res = await api.post('/admin/homes', data)
       }
 
       if (res.code === 0) {

@@ -49,19 +49,15 @@ Page({
   },
 
   tryAutoLogin() {
-    wx.login({
-      success: (loginRes) => {
-        api.post('/auth/wechat-login', { code: loginRes.code }).then((res) => {
-          if (res.code === 0 && res.isAdmin) {
-            getApp().globalData.adminToken = res.token
-            this.setData({ authenticated: true })
-            this.loadHomes()
-          } else if (res.code === 0 && res.openid) {
-            this.setData({ myOpenid: res.openid })
-          }
-        }).catch(() => {})
+    api.get('/auth/check').then((res) => {
+      if (res.code === 0 && res.isAdmin) {
+        getApp().globalData.adminToken = res.token
+        this.setData({ authenticated: true })
+        this.loadHomes()
+      } else if (res.code === 0 && res.openid) {
+        this.setData({ myOpenid: res.openid })
       }
-    })
+    }).catch(() => {})
   },
 
   copyOpenid() {
@@ -77,7 +73,7 @@ Page({
     this.setData({ loading: true })
     Promise.all([
       api.get('/homes'),
-      api.get('/admin/reviews', null, { auth: true })
+      api.get('/admin/reviews', null)
     ]).then(([homesRes, reviewsRes]) => {
       const homes = (homesRes.data || [])
       const allReviews = (reviewsRes.data || [])
@@ -152,7 +148,7 @@ Page({
     const id = event.currentTarget.dataset.id
     const name = event.currentTarget.dataset.name
     this.showConfirm('确认删除', `确定删除「${name}」吗？相关评论也将被删除。`, () => {
-      api.del(`/admin/homes/${id}`, { auth: true }).then(() => {
+      api.del(`/admin/homes/${id}`).then(() => {
         wx.showToast({ title: '已删除' })
         this.loadHomes()
       })
@@ -162,7 +158,7 @@ Page({
   deleteReview(event) {
     const id = event.currentTarget.dataset.id
     this.showConfirm('确认删除', '确定删除这条评论吗？', () => {
-      api.del(`/admin/reviews/${id}`, { auth: true }).then(() => {
+      api.del(`/admin/reviews/${id}`).then(() => {
         wx.showToast({ title: '已删除' })
         this.loadHomes()
       })
@@ -177,7 +173,7 @@ Page({
 
   loadLogs() {
     this.setData({ logsLoading: true })
-    api.get('/admin/logs', null, { auth: true }).then((res) => {
+    api.get('/admin/logs', null).then((res) => {
       const logs = (res.data || [])
       logs.forEach((l) => {
         l.createTime = formatTime(l.createTime || l.created_at)

@@ -1,32 +1,33 @@
 /**
- * 统一 API 请求封装
- * 通过代理云函数转发到云托管，不需要域名白名单
+ * 微信云托管 API 调用 —— 使用 callContainer，免域名白名单
  */
+const ENV = 'prod-d2gq9dsgy570dcb29'
+const SERVICE = 'alumni-api'
 
 function request(method, path, data) {
   return new Promise((resolve, reject) => {
-    wx.cloud.callFunction({
-      name: 'api-proxy',
-      data: { method, path, data }
-    }).then((res) => {
-      if (res.result && res.result.code !== undefined) {
-        resolve(res.result)
-      } else {
-        reject(new Error('请求失败'))
-      }
-    }).catch((err) => {
-      reject(err)
+    wx.cloud.callContainer({
+      config: { env: ENV },
+      path,
+      method,
+      header: { 'X-WX-SERVICE': SERVICE, 'Content-Type': 'application/json' },
+      data: method !== 'GET' ? data : undefined,
+      success: (res) => {
+        if (res.statusCode === 200) resolve(res.data)
+        else if (res.statusCode === 401) {
+          getApp().globalData.adminToken = ''
+          reject(new Error('无权限'))
+        } else reject(new Error((res.data && res.data.message) || '请求失败'))
+      },
+      fail: (err) => reject(err)
     })
   })
 }
 
 const api = {
   get: (path, params) => {
-    const query = params ? '?' + Object.entries(params)
-      .filter(([, v]) => v !== undefined && v !== null)
-      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
-      .join('&') : ''
-    return request('GET', path + query)
+    const q = params ? '?' + Object.entries(params).filter(([,v]) => v != null).map(([k,v]) => `${k}=${v}`).join('&') : ''
+    return request('GET', path + q)
   },
   post: (path, data) => request('POST', path, data),
   put: (path, data) => request('PUT', path, data),
