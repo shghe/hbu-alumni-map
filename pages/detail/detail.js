@@ -1,4 +1,6 @@
 const localHomes = require('../../data/homes')
+const { api } = require('../../utils/api')
+const { fetchSTS, uploadFile, uploadFiles } = require('../../utils/cos')
 
 function formatDate(date) {
   const d = new Date(date)
@@ -34,25 +36,23 @@ Page({
   },
 
   loadHome(id) {
-    const db = wx.cloud.database()
-    db.collection('alumni_homes')
-      .doc(id)
-      .get({
-        success: (res) => {
-          this.renderHome(res.data)
-        },
-        fail: (err) => {
-          console.error('云数据库加载失败，尝试本地数据', err)
-          const local = localHomes.find((h) => String(h.id) === id)
-          if (local) {
-            this.renderHome(local)
-            wx.showToast({ title: '已加载本地数据', icon: 'none' })
-          } else {
-            wx.showToast({ title: '未找到校友之家', icon: 'none' })
-            wx.navigateBack()
-          }
-        }
-      })
+    api.get(`/homes/${id}`).then((res) => {
+      if (res.code === 0 && res.data) {
+        this.renderHome(res.data)
+      } else {
+        throw new Error('not found')
+      }
+    }).catch(() => {
+      console.error('加载校友之家失败，尝试本地数据')
+      const local = localHomes.find((h) => String(h.id) === id)
+      if (local) {
+        this.renderHome(local)
+        wx.showToast({ title: '已加载本地数据', icon: 'none' })
+      } else {
+        wx.showToast({ title: '未找到校友之家', icon: 'none' })
+        wx.navigateBack()
+      }
+    })
   },
 
   renderHome(home) {
@@ -69,22 +69,20 @@ Page({
   },
 
   loadReviews() {
-    const db = wx.cloud.database()
-    db.collection('reviews')
-      .where({ homeId: this.homeId })
-      .orderBy('createTime', 'desc')
-      .get()
-      .then((res) => {
+    api.get('/reviews', { homeId: this.homeId }).then((res) => {
+      if (res.code === 0 && res.data) {
         const reviews = res.data.map((r) => ({
           ...r,
           avatar: r.nickname ? r.nickname.slice(0, 1) : '?',
-          createTime: formatDate(r.createTime)
+          createTime: r.createTime || r.created_at ? formatDate(r.createTime || r.created_at) : ''
         }))
         this.setData({ reviews, reviewsLoading: false })
-      })
-      .catch(() => {
+      } else {
         this.setData({ reviewsLoading: false })
-      })
+      }
+    }).catch(() => {
+      this.setData({ reviewsLoading: false })
+    })
   },
 
   setRating(event) {
@@ -140,32 +138,29 @@ Page({
     this.setData({ submitting: true })
 
     try {
-      // Upload photos to cloud storage
-      const photoIds = []
-      for (const filePath of selectedPhotos) {
-        const suffix = filePath.match(/\.(\w+)$/)?.[1] || 'jpg'
-        const cloudPath = `reviews/${Date.now()}_${Math.random().toString(36).slice(2)}.${suffix}`
-        const uploadRes = await wx.cloud.uploadFile({ cloudPath, filePath })
-        photoIds.push(uploadRes.fileID)
+      // 上传照片到 COS
+      const photoUrls = []
+      if (selectedPhotos.length > 0) {
+        const stsData = await fetchSTS(selectedPhotos.length)
+        for (const filePath of selectedPhotos) {
+          const suffix = filePath.match(/\.(\w+)$/)?.[1] || 'jpg'
+          const key = `reviews/${Date.now()}_${Math.random().toString(36).slice(2)}.${suffix}`
+          const url = await uploadFile(filePath, key, stsData)
+          photoUrls.push(url)
+        }
       }
 
-      // Save review via cloud function (server-side validation)
-      const res = await wx.cloud.callFunction({
-        name: 'admin',
-        data: {
-          action: 'addReview',
-          data: {
-            homeId: this.homeId,
-            nickname: nickname.trim(),
-            rating: myRating,
-            content: reviewContent.trim(),
-            photos: photoIds
-          }
-        }
+      // 提交评价到 API
+      const res = await api.post('/reviews', {
+        homeId: this.homeId,
+        nickname: nickname.trim(),
+        rating: myRating,
+        content: reviewContent.trim(),
+        photos: photoUrls
       })
 
-      if (res.result.code !== 0) {
-        wx.showToast({ title: res.result.message || '提交失败', icon: 'none' })
+      if (res.code !== 0) {
+        wx.showToast({ title: res.message || '提交失败', icon: 'none' })
         this.setData({ submitting: false })
         return
       }

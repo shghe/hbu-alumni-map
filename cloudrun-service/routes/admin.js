@@ -1,0 +1,199 @@
+const express = require('express')
+const router = express.Router()
+const { pool } = require('../utils/db')
+const { validateHomeData } = require('../utils/validator')
+
+// ---------- 辅助函数：写操作日志 ----------
+async function logAction(openid, adminName, action, detail) {
+  try {
+    await pool.execute(
+      'INSERT INTO admin_logs (openid, admin_name, action, detail) VALUES (?, ?, ?, ?)',
+      [openid, adminName, action, JSON.stringify(detail)]
+    )
+  } catch (e) {
+    console.error('写日志失败', e)
+  }
+}
+
+// ---------- 校友之家 CRUD ----------
+
+// POST /api/admin/homes — 添加
+router.post('/homes', async (req, res) => {
+  try {
+    const data = req.body
+    const errors = validateHomeData(data, false)
+    if (errors.length) return res.status(400).json({ code: 400, message: errors.join('; ') })
+
+    const [result] = await pool.execute(
+      `INSERT INTO alumni_homes (name, city, latitude, longitude, address, contact_name, phone, wechat, hours, description, video, video_poster)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [data.name, data.city, data.latitude, data.longitude,
+       data.address || null, data.contactName || null, data.phone || null, data.wechat || null,
+       data.hours || null, data.description || null, data.video || null, data.videoPoster || null]
+    )
+    const homeId = result.insertId
+
+    // 插入 photos
+    if (data.photos && data.photos.length > 0) {
+      const values = data.photos.map((url, i) => [homeId, url, i])
+      await pool.query('INSERT INTO home_photos (home_id, url, sort) VALUES ?', [values])
+    }
+
+    // 插入 services
+    if (data.services && data.services.length > 0) {
+      const values = data.services.map(s => [homeId, s])
+      await pool.query('INSERT INTO home_services (home_id, service) VALUES ?', [values])
+    }
+
+    await logAction(req.openid, req.adminName, 'add', { homeId, name: data.name, city: data.city })
+    res.json({ code: 0, id: String(homeId) })
+  } catch (err) {
+    console.error('POST /admin/homes error:', err)
+    res.status(500).json({ code: 500, message: '添加失败' })
+  }
+})
+
+// PUT /api/admin/homes/:id — 更新
+router.put('/homes/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10)
+    if (isNaN(id)) return res.status(400).json({ code: 400, message: 'id 无效' })
+
+    const data = req.body
+    const errors = validateHomeData({ ...data, id }, true)
+    if (errors.length) return res.status(400).json({ code: 400, message: errors.join('; ') })
+
+    await pool.execute(
+      `UPDATE alumni_homes SET name=?, city=?, latitude=?, longitude=?, address=?, contact_name=?, phone=?, wechat=?, hours=?, description=?, video=?, video_poster=?
+       WHERE id=?`,
+      [data.name, data.city, data.latitude, data.longitude,
+       data.address || null, data.contactName || null, data.phone || null, data.wechat || null,
+       data.hours || null, data.description || null, data.video || null, data.videoPoster || null,
+       id]
+    )
+
+    // 重建 photos
+    await pool.execute('DELETE FROM home_photos WHERE home_id = ?', [id])
+    if (data.photos && data.photos.length > 0) {
+      const values = data.photos.map((url, i) => [id, url, i])
+      await pool.query('INSERT INTO home_photos (home_id, url, sort) VALUES ?', [values])
+    }
+
+    // 重建 services
+    await pool.execute('DELETE FROM home_services WHERE home_id = ?', [id])
+    if (data.services && data.services.length > 0) {
+      const values = data.services.map(s => [id, s])
+      await pool.query('INSERT INTO home_services (home_id, service) VALUES ?', [values])
+    }
+
+    await logAction(req.openid, req.adminName, 'update', { homeId: id, name: data.name, city: data.city })
+    res.json({ code: 0 })
+  } catch (err) {
+    console.error('PUT /admin/homes/:id error:', err)
+    res.status(500).json({ code: 500, message: '更新失败' })
+  }
+})
+
+// DELETE /api/admin/homes/:id — 删除（级联删除评价和照片）
+router.delete('/homes/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10)
+    if (isNaN(id)) return res.status(400).json({ code: 400, message: 'id 无效' })
+
+    // 先获取名称用于日志
+    const [[home]] = await pool.execute('SELECT name FROM alumni_homes WHERE id = ?', [id])
+    const homeName = home ? home.name : ''
+
+    // 统计被删除的评价数
+    const [[{ cnt: reviewCount }]] = await pool.execute(
+      'SELECT COUNT(*) as cnt FROM reviews WHERE home_id = ?', [id]
+    )
+
+    // CASCADE 会自动删除关联的 photos, services, reviews, review_photos
+    await pool.execute('DELETE FROM alumni_homes WHERE id = ?', [id])
+
+    await logAction(req.openid, req.adminName, 'delete', { homeId: id, name: homeName, deletedReviews: reviewCount })
+    res.json({ code: 0, deletedReviews: reviewCount })
+  } catch (err) {
+    console.error('DELETE /admin/homes/:id error:', err)
+    res.status(500).json({ code: 500, message: '删除失败' })
+  }
+})
+
+// ---------- 评价管理 ----------
+
+// GET /api/admin/reviews — 所有评价
+router.get('/reviews', async (req, res) => {
+  try {
+    const [reviews] = await pool.execute(
+      `SELECT r.*, h.name as home_name
+       FROM reviews r
+       LEFT JOIN alumni_homes h ON r.home_id = h.id
+       ORDER BY r.created_at DESC`
+    )
+
+    const result = []
+    for (const r of reviews) {
+      const [photos] = await pool.execute('SELECT url FROM review_photos WHERE review_id = ?', [r.id])
+      result.push({
+        ...r,
+        _id: String(r.id),
+        homeId: String(r.home_id),
+        home_id: undefined,
+        homeName: r.home_name || '已删除',
+        home_name: undefined,
+        photos: photos.map(p => p.url),
+        createTime: r.created_at
+      })
+    }
+
+    res.json({ code: 0, data: result })
+  } catch (err) {
+    console.error('GET /admin/reviews error:', err)
+    res.status(500).json({ code: 500, message: '加载失败' })
+  }
+})
+
+// DELETE /api/admin/reviews/:id — 删除单条评价
+router.delete('/reviews/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10)
+    if (isNaN(id)) return res.status(400).json({ code: 400, message: 'id 无效' })
+
+    const [[review]] = await pool.execute('SELECT * FROM reviews WHERE id = ?', [id])
+    const reviewInfo = review ? { nickname: review.nickname, homeId: String(review.home_id) } : {}
+
+    await pool.execute('DELETE FROM reviews WHERE id = ?', [id])
+
+    await logAction(req.openid, req.adminName, 'deleteReview', { reviewId: id, ...reviewInfo })
+    res.json({ code: 0 })
+  } catch (err) {
+    console.error('DELETE /admin/reviews/:id error:', err)
+    res.status(500).json({ code: 500, message: '删除失败' })
+  }
+})
+
+// ---------- 操作日志 ----------
+
+// GET /api/admin/logs — 操作日志
+router.get('/logs', async (req, res) => {
+  try {
+    const [logs] = await pool.execute(
+      'SELECT * FROM admin_logs ORDER BY created_at DESC LIMIT 100'
+    )
+    const data = logs.map(l => ({
+      ...l,
+      _id: String(l.id),
+      createTime: l.created_at,
+      adminName: l.admin_name,
+      admin_name: undefined,
+      created_at: undefined
+    }))
+    res.json({ code: 0, data })
+  } catch (err) {
+    console.error('GET /admin/logs error:', err)
+    res.status(500).json({ code: 500, message: '加载失败' })
+  }
+})
+
+module.exports = router

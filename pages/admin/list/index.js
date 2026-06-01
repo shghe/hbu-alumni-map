@@ -1,3 +1,5 @@
+const { api } = require('../../../utils/api')
+
 function formatDate(date) {
   if (!date) return ''
   const d = new Date(date)
@@ -47,17 +49,19 @@ Page({
   },
 
   tryAutoLogin() {
-    wx.cloud.callFunction({
-      name: 'admin',
-      data: { action: 'checkAdmin' }
-    }).then((res) => {
-      if (res.result && res.result.isAdmin) {
-        this.setData({ authenticated: true })
-        this.loadHomes()
-      } else if (res.result && res.result.openid) {
-        this.setData({ myOpenid: res.result.openid })
+    wx.login({
+      success: (loginRes) => {
+        api.post('/auth/wechat-login', { code: loginRes.code }).then((res) => {
+          if (res.code === 0 && res.isAdmin) {
+            getApp().globalData.adminToken = res.token
+            this.setData({ authenticated: true })
+            this.loadHomes()
+          } else if (res.code === 0 && res.openid) {
+            this.setData({ myOpenid: res.openid })
+          }
+        }).catch(() => {})
       }
-    }).catch(() => {})
+    })
   },
 
   copyOpenid() {
@@ -71,23 +75,18 @@ Page({
 
   loadHomes() {
     this.setData({ loading: true })
-    const db = wx.cloud.database()
-    const password = getApp().globalData.adminPassword || ''
     Promise.all([
-      db.collection('alumni_homes').limit(100).get(),
-      wx.cloud.callFunction({
-        name: 'admin',
-        data: { action: 'getReviews', password }
-      })
+      api.get('/homes'),
+      api.get('/admin/reviews', null, { auth: true })
     ]).then(([homesRes, reviewsRes]) => {
-      const homes = homesRes.data
-      const allReviews = (reviewsRes.result && reviewsRes.result.data) || []
+      const homes = (homesRes.data || [])
+      const allReviews = (reviewsRes.data || [])
       const countMap = {}
       allReviews.forEach((r) => {
         countMap[r.homeId] = (countMap[r.homeId] || 0) + 1
       })
       homes.forEach((h) => {
-        h.reviewCount = countMap[h._id] || 0
+        h.reviewCount = countMap[h._id || h.id] || 0
       })
       this.setData({ homes, allReviews, loading: false, expandedHome: null, homeReviews: [] })
     }).catch(() => {
@@ -153,10 +152,7 @@ Page({
     const id = event.currentTarget.dataset.id
     const name = event.currentTarget.dataset.name
     this.showConfirm('确认删除', `确定删除「${name}」吗？相关评论也将被删除。`, () => {
-      wx.cloud.callFunction({
-        name: 'admin',
-        data: { action: 'delete', password: getApp().globalData.adminPassword, data: { _id: id } }
-      }).then(() => {
+      api.del(`/admin/homes/${id}`, { auth: true }).then(() => {
         wx.showToast({ title: '已删除' })
         this.loadHomes()
       })
@@ -166,10 +162,7 @@ Page({
   deleteReview(event) {
     const id = event.currentTarget.dataset.id
     this.showConfirm('确认删除', '确定删除这条评论吗？', () => {
-      wx.cloud.callFunction({
-        name: 'admin',
-        data: { action: 'deleteReview', password: getApp().globalData.adminPassword, data: { _id: id } }
-      }).then(() => {
+      api.del(`/admin/reviews/${id}`, { auth: true }).then(() => {
         wx.showToast({ title: '已删除' })
         this.loadHomes()
       })
@@ -184,13 +177,10 @@ Page({
 
   loadLogs() {
     this.setData({ logsLoading: true })
-    wx.cloud.callFunction({
-      name: 'admin',
-      data: { action: 'getLogs', password: getApp().globalData.adminPassword }
-    }).then((res) => {
-      const logs = (res.result && res.result.data) || []
+    api.get('/admin/logs', null, { auth: true }).then((res) => {
+      const logs = (res.data || [])
       logs.forEach((l) => {
-        l.createTime = formatTime(l.createTime)
+        l.createTime = formatTime(l.createTime || l.created_at)
         const labels = { add: '新增', update: '编辑', delete: '删除', deleteReview: '删评' }
         l.actionLabel = labels[l.action] || l.action
       })

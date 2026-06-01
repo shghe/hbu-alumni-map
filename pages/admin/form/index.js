@@ -1,5 +1,7 @@
 const CHINA_CITIES = require('../../../data/china-cities')
 const PROVINCES = CHINA_CITIES.map(p => p.province)
+const { api } = require('../../../utils/api')
+const { fetchSTS, uploadFile, isTempFile } = require('../../../utils/cos')
 
 const app = getApp()
 
@@ -53,8 +55,8 @@ Page({
   },
 
   loadHome(id) {
-    const db = wx.cloud.database()
-    db.collection('alumni_homes').doc(id).get().then((res) => {
+    api.get(`/homes/${id}`).then((res) => {
+      if (!res.data) throw new Error('not found')
       const h = res.data
       const city = h.city || '保定'
       const province = h.province || findProvince(city)
@@ -248,35 +250,45 @@ Page({
     })
 
     try {
-      // Upload new photos
+      // 统计需要上传的新文件数
+      let uploadCount = 0
+      for (const photo of form.photos) { if (isTempFile(photo)) uploadCount++ }
+      if (isTempFile(form.videoPoster)) uploadCount++
+      if (isTempFile(form.video)) uploadCount++
+
+      // 获取 COS 上传凭证
+      let stsData = null
+      if (uploadCount > 0) {
+        stsData = await fetchSTS(uploadCount)
+      }
+
+      // 上传新照片到 COS
       const photos = []
       for (const photo of form.photos) {
-        if (photo.startsWith('http://tmp') || photo.startsWith('wxfile')) {
+        if (isTempFile(photo)) {
           const suffix = photo.match(/\.(\w+)$/)?.[1] || 'jpg'
-          const cloudPath = `homes/${Date.now()}_${Math.random().toString(36).slice(2)}.${suffix}`
-          const res = await wx.cloud.uploadFile({ cloudPath, filePath: photo })
-          photos.push(res.fileID)
+          const key = `homes/${Date.now()}_${Math.random().toString(36).slice(2)}.${suffix}`
+          const url = await uploadFile(photo, key, stsData)
+          photos.push(url)
         } else {
           photos.push(photo)
         }
       }
 
-      // Upload poster if new
+      // 上传封面图
       let videoPoster = form.videoPoster
-      if (videoPoster && (videoPoster.startsWith('http://tmp') || videoPoster.startsWith('wxfile'))) {
+      if (isTempFile(videoPoster)) {
         const suffix = videoPoster.match(/\.(\w+)$/)?.[1] || 'jpg'
-        const cloudPath = `homes/poster_${Date.now()}.${suffix}`
-        const res = await wx.cloud.uploadFile({ cloudPath, filePath: videoPoster })
-        videoPoster = res.fileID
+        const key = `homes/poster_${Date.now()}.${suffix}`
+        videoPoster = await uploadFile(videoPoster, key, stsData)
       }
 
-      // Upload video if new
+      // 上传视频
       let video = form.video
-      if (video && (video.startsWith('http://tmp') || video.startsWith('wxfile'))) {
+      if (isTempFile(video)) {
         const suffix = video.match(/\.(\w+)$/)?.[1] || 'mp4'
-        const cloudPath = `homes/video_${Date.now()}.${suffix}`
-        const res = await wx.cloud.uploadFile({ cloudPath, filePath: video })
-        video = res.fileID
+        const key = `homes/video_${Date.now()}.${suffix}`
+        video = await uploadFile(video, key, stsData)
       }
 
       const data = {
@@ -296,23 +308,22 @@ Page({
         photos
       }
 
-      const password = app.globalData.adminPassword
-      const action = isEdit ? 'update' : 'add'
-
       if (isEdit) {
-        data._id = homeId
+        data.id = homeId
       }
 
-      const res = await wx.cloud.callFunction({
-        name: 'admin',
-        data: { action, password, data }
-      })
+      let res
+      if (isEdit) {
+        res = await api.put(`/admin/homes/${homeId}`, data, { auth: true })
+      } else {
+        res = await api.post('/admin/homes', data, { auth: true })
+      }
 
-      if (res.result.code === 0) {
+      if (res.code === 0) {
         wx.showToast({ title: isEdit ? '已更新' : '已添加' })
         setTimeout(() => wx.navigateBack(), 1200)
       } else {
-        wx.showToast({ title: res.result.message || '保存失败', icon: 'none' })
+        wx.showToast({ title: res.message || '保存失败', icon: 'none' })
       }
     } catch (err) {
       console.error('保存失败', err)

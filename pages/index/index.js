@@ -1,4 +1,5 @@
 const localHomes = require('../../data/homes')
+const { api } = require('../../utils/api')
 
 const CITIES = ['保定', '北京', '石家庄', '雄安', '唐山', '秦皇岛', '邯郸', '邢台', '张家口', '承德', '沧州', '廊坊', '衡水']
 
@@ -126,18 +127,18 @@ Page({
 
   loadAllHomes(userLocation) {
     this.setData({ loading: true })
-    const db = wx.cloud.database()
-    db.collection('alumni_homes').limit(100).get({
-      success: (res) => {
+    api.get('/homes').then((res) => {
+      if (res.code === 0 && res.data) {
         const homes = res.data.map((home) => ({
           ...home,
-          dbId: home._id
+          dbId: home.dbId || String(home.id)
         }))
         this.initHomes(homes, userLocation)
-      },
-      fail: () => {
+      } else {
         this.fallbackToLocal(userLocation)
       }
+    }).catch(() => {
+      this.fallbackToLocal(userLocation)
     })
   },
 

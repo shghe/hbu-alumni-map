@@ -1,11 +1,9 @@
 App({
   globalData: {
-    appName: '河北大学校友地图',
-    adminPassword: ''
+    appName: 'HBU校友之家地图',
+    adminToken: ''
   },
   onLaunch() {
-    wx.cloud.init({
-      env: 'cloud1-d7gxbwt5z89029dd1'
-    })
+    // 云托管模式：不再使用 wx.cloud.init()
   }
 })
