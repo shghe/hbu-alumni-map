@@ -1,3 +1,4 @@
+require('dotenv').config()
 const express = require('express')
 const jwt = require('jsonwebtoken')
 
@@ -11,6 +12,17 @@ const { initDB } = require('./utils/db')
 
 const app = express()
 const PORT = process.env.PORT || 80
+
+// ---------- 数据迁移（一次性） ----------
+app.get('/api/migrate', async (req, res) => {
+  try {
+    const { runMigration } = require('./scripts/migrate-data')
+    await runMigration()
+    res.json({ ok: true, message: '数据迁移完成' })
+  } catch (err) {
+    res.status(500).json({ ok: false, message: err.message, stack: err.stack?.split('\n').slice(0, 5) })
+  }
+})
 
 // ---------- 全局中间件 ----------
 app.use(express.json())
@@ -44,10 +56,14 @@ app.use((err, req, res, next) => {
 
 // ---------- 启动 ----------
 initDB().then(() => {
+  console.log('Database initialized')
   app.listen(PORT, () => {
     console.log(`API server running on port ${PORT}`)
   })
 }).catch(err => {
-  console.error('Failed to initialize database:', err)
-  process.exit(1)
+  console.error('Database init failed:', err.message)
+  // 即使数据库初始化失败也启动服务（health 检查仍可用）
+  app.listen(PORT, () => {
+    console.log(`API server running on port ${PORT} (without DB)`)
+  })
 })

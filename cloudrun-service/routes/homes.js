@@ -35,7 +35,7 @@ router.get('/', async (req, res) => {
     res.json({ code: 0, data: result })
   } catch (err) {
     console.error('GET /homes error:', err)
-    res.status(500).json({ code: 500, message: '加载失败' })
+    res.status(500).json({ code: 500, message: '加载失败', error: err.message })
   }
 })
 

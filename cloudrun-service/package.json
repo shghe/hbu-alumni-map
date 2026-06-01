@@ -9,7 +9,9 @@
     "db:init": "node scripts/init-db.js"
   },
   "dependencies": {
+    "@cloudbase/node-sdk": "^2.11.0",
     "cos-nodejs-sdk-v5": "^2.14.0",
+    "dotenv": "^16.4.0",
     "express": "^4.21.0",
     "jsonwebtoken": "^9.0.2",
     "mysql2": "^3.11.0"

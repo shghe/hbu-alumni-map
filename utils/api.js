@@ -4,7 +4,7 @@
  */
 
 // 云托管服务地址（部署后替换为实际地址）
-const API_BASE = 'https://your-service.run.wxcloudrun.com/api'
+const API_BASE = 'https://alumni-api-264838-4-1430752917.sh.run.tcloudbase.com/api'
 
 function request(method, path, data, options = {}) {
   return new Promise((resolve, reject) => {

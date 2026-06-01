@@ -13,16 +13,24 @@ const pool = mysql.createPool({
 })
 
 async function initDB() {
-  const conn = await pool.getConnection()
+  const dbName = process.env.MYSQL_DATABASE || 'hbu_alumni_map'
+
+  // 先用不指定数据库的连接建库
+  const initConn = await mysql.createConnection({
+    host: process.env.MYSQL_HOST || '127.0.0.1',
+    port: parseInt(process.env.MYSQL_PORT, 10) || 3306,
+    user: process.env.MYSQL_USER || 'root',
+    password: process.env.MYSQL_PASSWORD || ''
+  })
+
   try {
-    // 创建数据库（如不存在）
-    await conn.execute(
-      `CREATE DATABASE IF NOT EXISTS \`${process.env.MYSQL_DATABASE || 'hbu_alumni_map'}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
+    await initConn.execute(
+      `CREATE DATABASE IF NOT EXISTS \`${dbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
     )
-    await conn.execute(`USE \`${process.env.MYSQL_DATABASE || 'hbu_alumni_map'}\``)
+    await initConn.query(`USE \`${dbName}\``)
 
     // 校友之家表
-    await conn.execute(`
+    await initConn.execute(`
       CREATE TABLE IF NOT EXISTS alumni_homes (
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(100) NOT NULL,
@@ -43,7 +51,7 @@ async function initDB() {
     `)
 
     // 校友之家照片
-    await conn.execute(`
+    await initConn.execute(`
       CREATE TABLE IF NOT EXISTS home_photos (
         id INT AUTO_INCREMENT PRIMARY KEY,
         home_id INT NOT NULL,
@@ -54,7 +62,7 @@ async function initDB() {
     `)
 
     // 校友之家服务标签
-    await conn.execute(`
+    await initConn.execute(`
       CREATE TABLE IF NOT EXISTS home_services (
         id INT AUTO_INCREMENT PRIMARY KEY,
         home_id INT NOT NULL,
@@ -64,7 +72,7 @@ async function initDB() {
     `)
 
     // 评价表
-    await conn.execute(`
+    await initConn.execute(`
       CREATE TABLE IF NOT EXISTS reviews (
         id INT AUTO_INCREMENT PRIMARY KEY,
         home_id INT NOT NULL,
@@ -77,7 +85,7 @@ async function initDB() {
     `)
 
     // 评价照片
-    await conn.execute(`
+    await initConn.execute(`
       CREATE TABLE IF NOT EXISTS review_photos (
         id INT AUTO_INCREMENT PRIMARY KEY,
         review_id INT NOT NULL,
@@ -87,7 +95,7 @@ async function initDB() {
     `)
 
     // 管理员表
-    await conn.execute(`
+    await initConn.execute(`
       CREATE TABLE IF NOT EXISTS admins (
         id INT AUTO_INCREMENT PRIMARY KEY,
         openid VARCHAR(50) NOT NULL UNIQUE,
@@ -96,7 +104,7 @@ async function initDB() {
     `)
 
     // 操作日志表
-    await conn.execute(`
+    await initConn.execute(`
       CREATE TABLE IF NOT EXISTS admin_logs (
         id INT AUTO_INCREMENT PRIMARY KEY,
         openid VARCHAR(50) NOT NULL,
@@ -107,16 +115,23 @@ async function initDB() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `)
 
-    // 索引
-    await conn.execute('CREATE INDEX IF NOT EXISTS idx_city ON alumni_homes(city)')
-    await conn.execute('CREATE INDEX IF NOT EXISTS idx_reviews_home ON reviews(home_id)')
-    await conn.execute('CREATE INDEX IF NOT EXISTS idx_reviews_created ON reviews(created_at DESC)')
-    await conn.execute('CREATE INDEX IF NOT EXISTS idx_admins_openid ON admins(openid)')
-    await conn.execute('CREATE INDEX IF NOT EXISTS idx_logs_created ON admin_logs(created_at DESC)')
+    // 索引（MySQL 8.0.13+ 才支持 IF NOT EXISTS，这里忽略已存在的索引错误）
+    const indexes = [
+      'CREATE INDEX idx_city ON alumni_homes(city)',
+      'CREATE INDEX idx_reviews_home ON reviews(home_id)',
+      'CREATE INDEX idx_reviews_created ON reviews(created_at DESC)',
+      'CREATE INDEX idx_admins_openid ON admins(openid)',
+      'CREATE INDEX idx_logs_created ON admin_logs(created_at DESC)'
+    ]
+    for (const sql of indexes) {
+      try { await initConn.execute(sql) } catch (e) {
+        if (!e.message.includes('Duplicate key')) console.error('Index:', e.message)
+      }
+    }
 
     console.log('Database initialized successfully')
   } finally {
-    conn.release()
+    await initConn.end()
   }
 }
 
