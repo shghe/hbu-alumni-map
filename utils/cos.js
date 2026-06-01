@@ -6,8 +6,16 @@
  *   npm install cos-wx-sdk-v5
  */
 
-const COS = require('cos-wx-sdk-v5')
 const { api } = require('./api')
+
+// 延迟加载，避免未构建 npm 时启动报错
+function getCOS() {
+  try {
+    return require('cos-wx-sdk-v5')
+  } catch (e) {
+    throw new Error('COS SDK 未安装，请在微信开发者工具中执行"工具→构建 npm"')
+  }
+}
 
 /**
  * 获取 COS 上传临时凭证
@@ -25,6 +33,7 @@ function fetchSTS(count = 1) {
  */
 function uploadFile(filePath, key, stsData) {
   return new Promise((resolve, reject) => {
+    const COS = getCOS()
     const cos = new COS({
       getAuthorization: (_options, callback) => {
         callback({
