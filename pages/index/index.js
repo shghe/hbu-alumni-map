@@ -168,8 +168,24 @@ Page({
     let selectedCity = this.data.selectedCity
     let cityIndex = availableCities.indexOf(selectedCity)
     if (cityIndex === -1) {
-      selectedCity = availableCities[0] || CITIES[0]
-      cityIndex = 0
+      // Guess user city from location, default to 秦皇岛 if not found
+      let guessCity = ''
+      if (userLocation) {
+        let minDist = Infinity
+        for (const [city, coord] of Object.entries(CITY_COORDS)) {
+          const dist = getDistanceKm(userLocation, coord)
+          if (dist < minDist) {
+            minDist = dist
+            guessCity = city
+          }
+        }
+        if (!availableCities.includes(guessCity)) {
+          guessCity = ''
+        }
+      }
+      const fallbackCity = availableCities.includes('秦皇岛') ? '秦皇岛' : (availableCities[0] || CITIES[0])
+      selectedCity = guessCity || fallbackCity
+      cityIndex = availableCities.indexOf(selectedCity)
     }
 
     const serviceOptions = this.buildServiceOptions(homes)
@@ -348,5 +364,12 @@ Page({
         })
       }
     })
+  },
+
+  onShareAppMessage() {
+    return {
+      title: 'HBU校友之家地图',
+      path: '/pages/index/index'
+    }
   }
 })

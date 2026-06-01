@@ -3,6 +3,7 @@
   "compileType": "miniprogram",
   "libVersion": "3.15.1",
   "projectname": "hbu-alumni-map",
+  "version": "1.0.8",
   "condition": {},
   "cloudfunctionRoot": "cloudfunctions/",
   "cloudfunctionTemplateRoot": "cloudfunctionTemplate/",

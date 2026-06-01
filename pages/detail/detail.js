@@ -241,5 +241,13 @@ Page({
       sources: [{ url, type: 'video' }],
       current: 0
     })
+  },
+
+  onShareAppMessage() {
+    const { home } = this.data
+    return {
+      title: home.name || '校友之家',
+      path: `/pages/detail/detail?id=${this.homeId}`
+    }
   }
 })
