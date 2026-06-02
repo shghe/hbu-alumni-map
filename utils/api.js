@@ -4,7 +4,7 @@ function request(method, path, data) {
   return new Promise((resolve, reject) => {
     wx.cloud.callContainer({
       config: { env: ENV, service: 'alumni-api' },
-      path, method,
+      path: '/api' + path, method,
       header: { 'Content-Type': 'application/json' },
       data: method !== 'GET' ? data : undefined,
       timeout: 15000,
