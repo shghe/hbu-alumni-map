@@ -27,8 +27,9 @@ app.use('/api/auth', authRouter)
 
 // 管理员路由
 app.use('/api/admin', adminAuth, adminRouter)
-// 评论上传公开，其他上传需管理员认证
-app.get('/api/upload/review-sts', uploadRouter)
+// 公开评论上传凭证（独立路径，避免被 adminAuth 拦截）
+app.get('/api/review-sts', uploadRouter)
+// 管理员上传凭证
 app.use('/api/upload', adminAuth, uploadRouter)
 
 // 视频迁移（一次性，每次1个）

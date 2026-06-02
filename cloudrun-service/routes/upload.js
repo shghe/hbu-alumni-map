@@ -14,7 +14,7 @@ router.get('/sts', async (req, res) => {
   }
 })
 
-// GET /api/upload/review-sts?count=N — 公开评论上传凭证
+// GET /api/review-sts?count=N — 公开评论上传凭证
 router.get('/review-sts', async (req, res) => {
   try {
     const count = parseInt(req.query.count, 10) || 1

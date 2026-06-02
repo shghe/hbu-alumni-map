@@ -21,7 +21,7 @@ function getCOS() {
  * 获取 COS 上传临时凭证
  */
 function fetchSTS(count = 1, isPublic = false) {
-  const path = isPublic ? '/upload/review-sts' : '/upload/sts'
+  const path = isPublic ? '/review-sts' : '/upload/sts'
   return api.get(path, { count })
 }
 
