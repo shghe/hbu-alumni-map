@@ -264,6 +264,7 @@
 
 .list-scroll {
   flex: 1;
+  height: 0;
 }
 
 .home-block {
