@@ -30,6 +30,16 @@ app.use('/api/admin', adminAuth, adminRouter)
 app.use('/api/upload', adminAuth, uploadRouter)
 
 // 视频迁移（一次性，每次1个）
+app.get('/api/migrate-posters', async (req, res) => {
+  try {
+    const { migrateNextPoster } = require('./scripts/migrate-videos')
+    const report = await migrateNextPoster()
+    res.json({ ok: true, ...report })
+  } catch (err) {
+    res.status(500).json({ ok: false, message: err.message })
+  }
+})
+
 app.get('/api/migrate-videos', adminAuth, async (req, res) => {
   try {
     const { migrateNextVideo } = require('./scripts/migrate-videos')

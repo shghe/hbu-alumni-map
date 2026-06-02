@@ -70,4 +70,35 @@ async function migrateNextVideo() {
   }
 }
 
-module.exports = { migrateNextVideo }
+async function migrateNextPoster() {
+  const conn = await mysql.createConnection({
+    host: process.env.MYSQL_HOST || '10.13.111.215',
+    port: parseInt(process.env.MYSQL_PORT, 10) || 3306,
+    user: process.env.MYSQL_USER || 'root',
+    password: process.env.MYSQL_PASSWORD || 'aM66Hrf8',
+    database: process.env.MYSQL_DATABASE || 'hbu_alumni_map'
+  })
+
+  const [[{ cnt }]] = await conn.execute(
+    "SELECT COUNT(*) as cnt FROM alumni_homes WHERE video_poster LIKE 'cloud://%'"
+  )
+  if (cnt === 0) { await conn.end(); return { done: 0, remaining: 0, message: '所有封面已迁移完成' } }
+
+  const [[home]] = await conn.execute(
+    "SELECT id, name, video_poster FROM alumni_homes WHERE video_poster LIKE 'cloud://%' LIMIT 1"
+  )
+  try {
+    const key = extractKey(home.video_poster)
+    const dl = await app.downloadFile({ fileID: home.video_poster })
+    await putObject(key, dl.fileContent)
+    const newUrl = `${COS_BASE}/${key}`
+    await conn.execute('UPDATE alumni_homes SET video_poster = ? WHERE id = ?', [newUrl, home.id])
+    await conn.end()
+    return { done: 1, remaining: cnt - 1, name: home.name, message: `✓ ${home.name}` }
+  } catch (e) {
+    await conn.end()
+    return { done: 0, remaining: cnt, error: e.message, message: `✗ ${home.name}: ${e.message}` }
+  }
+}
+
+module.exports = { migrateNextVideo, migrateNextPoster }
