@@ -29,7 +29,7 @@ function getSTSCredentials(count = 1) {
         'name/cos:UploadPart',
         'name/cos:CompleteMultipartUpload'
       ],
-      resource: [`qcs::cos:${REGION}:uid/*:${BUCKET}/*`]
+      resource: ['*']
     }]
   }
 
