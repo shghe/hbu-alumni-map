@@ -49,15 +49,19 @@ Page({
   },
 
   tryAutoLogin() {
-    api.get('/auth/check').then((res) => {
-      if (res.code === 0 && res.isAdmin) {
-        getApp().globalData.adminToken = res.token
-        this.setData({ authenticated: true })
-        this.loadHomes()
-      } else if (res.code === 0 && res.openid) {
-        this.setData({ myOpenid: res.openid })
+    wx.login({
+      success: (loginRes) => {
+        api.post('/auth/wechat-login', { code: loginRes.code }).then((res) => {
+          if (res.code === 0 && res.isAdmin) {
+            getApp().globalData.adminToken = res.token
+            this.setData({ authenticated: true })
+            this.loadHomes()
+          } else if (res.code === 0 && res.openid) {
+            this.setData({ myOpenid: res.openid })
+          }
+        }).catch(() => {})
       }
-    }).catch(() => {})
+    })
   },
 
   copyOpenid() {
