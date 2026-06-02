@@ -3,9 +3,9 @@ const ENV = 'prod-d2gq9dsgy570dcb29'
 function request(method, path, data) {
   return new Promise((resolve, reject) => {
     wx.cloud.callContainer({
-      config: { env: ENV, service: 'alumni-api' },
+      config: { env: ENV },
       path: '/api' + path, method,
-      header: { 'Content-Type': 'application/json' },
+      header: { 'Content-Type': 'application/json', 'X-WX-SERVICE': 'alumni-api' },
       data: method !== 'GET' ? data : undefined,
       timeout: 15000,
       success: (res) => resolve(res.data),
