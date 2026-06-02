@@ -10,7 +10,7 @@ router.get('/sts', async (req, res) => {
     res.json({ code: 0, ...stsData })
   } catch (err) {
     console.error('GET /upload/sts error:', err)
-    res.status(500).json({ code: 500, message: '获取上传凭证失败' })
+    res.status(500).json({ code: 500, message: '获取上传凭证失败: ' + err.message })
   }
 })
 
