@@ -330,8 +330,8 @@ Page({
     }
 
     wx.openLocation({
-      latitude: home.latitude,
-      longitude: home.longitude,
+      latitude: Number(home.latitude),
+      longitude: Number(home.longitude),
       name: home.name,
       address: home.address,
       scale: 18
