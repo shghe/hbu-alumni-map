@@ -20,8 +20,9 @@ function getCOS() {
 /**
  * 获取 COS 上传临时凭证
  */
-function fetchSTS(count = 1) {
-  return api.get('/upload/sts', { count }, { auth: true })
+function fetchSTS(count = 1, isPublic = false) {
+  const path = isPublic ? '/upload/review-sts' : '/upload/sts'
+  return api.get(path, { count })
 }
 
 /**

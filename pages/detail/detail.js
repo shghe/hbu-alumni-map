@@ -141,7 +141,7 @@ Page({
       // 上传照片到 COS
       const photoUrls = []
       if (selectedPhotos.length > 0) {
-        const stsData = await fetchSTS(selectedPhotos.length)
+        const stsData = await fetchSTS(selectedPhotos.length, true)
         for (const filePath of selectedPhotos) {
           const suffix = filePath.match(/\.(\w+)$/)?.[1] || 'jpg'
           const key = `reviews/${Date.now()}_${Math.random().toString(36).slice(2)}.${suffix}`
