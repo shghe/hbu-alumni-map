@@ -27,8 +27,17 @@ app.use('/api/auth', authRouter)
 
 // 管理员路由
 app.use('/api/admin', adminAuth, adminRouter)
-// 公开评论上传凭证（独立路径，避免被 adminAuth 拦截）
-app.get('/api/review-sts', uploadRouter)
+// 公开评论上传凭证
+const { getSTSCredentials } = require('./utils/cos')
+app.get('/api/review-sts', async (req, res) => {
+  try {
+    const count = Math.min(parseInt(req.query.count, 10) || 1, 6)
+    const stsData = await getSTSCredentials(count)
+    res.json({ code: 0, ...stsData })
+  } catch (err) {
+    res.status(500).json({ code: 500, message: '获取上传凭证失败: ' + err.message })
+  }
+})
 // 管理员上传凭证
 app.use('/api/upload', adminAuth, uploadRouter)
 
