@@ -58,7 +58,8 @@ function getSTSCredentials(count = 1) {
         'Authorization': authorization,
         'X-TC-Action': action,
         'X-TC-Version': version,
-        'X-TC-Timestamp': timestamp.toString()
+        'X-TC-Timestamp': timestamp.toString(),
+        'X-TC-Region': REGION
       },
       rejectUnauthorized: false
     }, (res) => {
