@@ -1,5 +1,7 @@
 const CHINA_CITIES = require('../../../data/china-cities')
 const PROVINCES = CHINA_CITIES.map(p => p.province)
+const DEFAULT_PROVINCE_IDX = PROVINCES.indexOf('河北省')
+const DEFAULT_CITIES = CHINA_CITIES[DEFAULT_PROVINCE_IDX >= 0 ? DEFAULT_PROVINCE_IDX : 0].cities
 const { api } = require('../../../utils/api')
 const { fetchSTS, uploadFile, isTempFile } = require('../../../utils/cos')
 
@@ -20,8 +22,8 @@ Page({
     saving: false,
     form: {
       name: '',
-      province: '河北省',
-      city: '保定',
+      province: PROVINCES[DEFAULT_PROVINCE_IDX],
+      city: DEFAULT_CITIES[0],
       latitude: '',
       longitude: '',
       address: '',
@@ -38,8 +40,8 @@ Page({
     newService: '',
     // Province-city dual picker
     provinces: PROVINCES,
-    provinceIndex: 0,
-    cityList: CHINA_CITIES[0].cities,
+    provinceIndex: DEFAULT_PROVINCE_IDX,
+    cityList: DEFAULT_CITIES,
     cityIndex: 0
   },
 
