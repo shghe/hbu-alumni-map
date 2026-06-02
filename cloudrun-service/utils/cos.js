@@ -25,9 +25,13 @@ function getSTSCredentials(count = 1) {
       action: [
         'name/cos:PutObject',
         'name/cos:PostObject',
+        'name/cos:GetObject',
         'name/cos:InitiateMultipartUpload',
         'name/cos:UploadPart',
-        'name/cos:CompleteMultipartUpload'
+        'name/cos:ListParts',
+        'name/cos:CompleteMultipartUpload',
+        'name/cos:AbortMultipartUpload',
+        'name/cos:ListMultipartUploads'
       ],
       resource: ['*']
     }]
