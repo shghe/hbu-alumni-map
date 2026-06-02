@@ -4,10 +4,10 @@ function request(method, path, data) {
   return new Promise((resolve, reject) => {
     wx.cloud.callContainer({
       config: { env: ENV },
-      path,
-      method,
+      path, method,
       header: { 'Content-Type': 'application/json' },
       data: method !== 'GET' ? data : undefined,
+      timeout: 15000,
       success: (res) => resolve(res.data),
       fail: (err) => reject(err)
     })
