@@ -137,7 +137,8 @@ Page({
       } else {
         this.fallbackToLocal(userLocation)
       }
-    }).catch(() => {
+    }).catch((err) => {
+      console.error('API请求失败:', JSON.stringify(err))
       this.fallbackToLocal(userLocation)
     })
   },
