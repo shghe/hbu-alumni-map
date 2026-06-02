@@ -1,23 +1,14 @@
-const API_BASE = 'https://alumni-api-264838-4-1430752917.sh.run.tcloudbase.com/api'
-const ADMIN = ['/admin/', '/upload/']
+const ENV = 'prod-d2gq9dsgy570dcb29'
 
 function request(method, path, data) {
   return new Promise((resolve, reject) => {
-    const h = { 'Content-Type': 'application/json' }
-    if (ADMIN.some(p => path.startsWith(p))) {
-      const t = getApp().globalData.adminToken
-      if (t) h['Authorization'] = `Bearer ${t}`
-    }
-    wx.request({
-      url: API_BASE + path, method, header: h,
+    wx.cloud.callContainer({
+      config: { env: ENV, service: 'alumni-api' },
+      path, method,
+      header: { 'Content-Type': 'application/json' },
       data: method !== 'GET' ? data : undefined,
-      success: r => {
-        if (r.statusCode === 200) resolve(r.data)
-        else if (r.statusCode === 401) {
-          getApp().globalData.adminToken = ''
-          reject(new Error('无权限'))
-        } else reject(new Error((r.data && r.data.message) || '请求失败'))
-      },
+      timeout: 15000,
+      success: (res) => resolve(res.data),
       fail: reject
     })
   })
