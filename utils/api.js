@@ -1,10 +1,17 @@
 const API_BASE = 'https://alumni-api-264838-4-1430752917.sh.run.tcloudbase.com/api'
 
+// 需要管理员认证的路径前缀
+const ADMIN_PATHS = ['/admin/', '/upload/']
+
 function request(method, path, data) {
   return new Promise((resolve, reject) => {
     const header = { 'Content-Type': 'application/json' }
-    const token = getApp().globalData.adminToken
-    if (token) header['Authorization'] = `Bearer ${token}`
+
+    // 仅管理员路径附带 token
+    if (ADMIN_PATHS.some(p => path.startsWith(p))) {
+      const token = getApp().globalData.adminToken
+      if (token) header['Authorization'] = `Bearer ${token}`
+    }
 
     wx.request({
       url: `${API_BASE}${path}`,
