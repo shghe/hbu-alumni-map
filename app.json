@@ -20,5 +20,6 @@
     "getLocation",
     "chooseLocation"
   ],
-  "sitemapLocation": "sitemap.json"
+  "sitemapLocation": "sitemap.json",
+  "cloud": true
 }
