@@ -1,9 +1,9 @@
 {
-  "libVersion": "2.25.4",
+  "libVersion": "2.23.4",
   "projectname": "hbu-alumni-map",
   "condition": {},
   "setting": {
-    "urlCheck": false,
+    "urlCheck": true,
     "coverView": false,
     "lazyloadPlaceholderEnable": false,
     "skylineRenderEnable": false,
