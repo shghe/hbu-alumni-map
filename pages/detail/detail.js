@@ -188,13 +188,21 @@ Page({
       wx.hideLoading()
     }
     if (!url) return wx.showToast({ title: '视频加载失败', icon: 'none' })
-    this.setData({ 'home.video': url, 'home.videoPlaying': true }, () => {
+    this.setData({ 'home.video': url, 'home.videoPlayerActive': true }, () => {
       const videoContext = wx.createVideoContext('homeVideo', this)
       setTimeout(() => {
         videoContext.play()
         if (videoContext.requestFullScreen) videoContext.requestFullScreen({ direction: 0 })
       }, 100)
     })
+  },
+
+  onVideoFullscreenChange(event) {
+    if (!event.detail.fullScreen) {
+      const videoContext = wx.createVideoContext('homeVideo', this)
+      videoContext.pause()
+      this.setData({ 'home.videoPlayerActive': false })
+    }
   },
 
   onShareAppMessage() {
