@@ -1,21 +1,12 @@
-/**
- * 通过 callContainer 内网拉取图片/视频，存为临时文件——零 COS 外网下行流量
- */
 const IMG_CACHE = {}
 
 function getKeyFromUrl(url) {
   if (!url) return ''
-  // 从 https://bucket.cos.region.myqcloud.com/homes/xxx.jpg 提取 key
-  try {
-    const u = new URL(url)
-    return u.pathname.slice(1)
-  } catch { return url }
+  try { return new URL(url).pathname.slice(1) }
+  catch { return url }
 }
 
-/**
- * 内网拉取图片，返回临时文件路径
- */
-function fetchImage(url) {
+function fetchMedia(url, endpoint) {
   return new Promise((resolve) => {
     if (!url) return resolve('')
     if (IMG_CACHE[url]) return resolve(IMG_CACHE[url])
@@ -25,68 +16,29 @@ function fetchImage(url) {
 
     wx.cloud.callContainer({
       config: { env: 'prod-d2gq9dsgy570dcb29' },
-      path: '/api/getImg?key=' + encodeURIComponent(key),
+      path: `${endpoint}?key=${encodeURIComponent(key)}`,
       method: 'GET',
+      dataType: 'arraybuffer',
       success(res) {
         const ext = key.split('.').pop() || 'jpg'
-        const filePath = `${wx.env.USER_DATA_PATH}/img_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+        const filePath = `${wx.env.USER_DATA_PATH}/media_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
         try {
-          // res.data 是 base64 编码的图片或 ArrayBuffer
-          const data = res.data
-          if (typeof data === 'string') {
-            wx.getFileSystemManager().writeFileSync(filePath, data, 'base64')
-          } else {
-            wx.getFileSystemManager().writeFileSync(filePath, data)
-          }
+          wx.getFileSystemManager().writeFileSync(filePath, res.data)
           IMG_CACHE[url] = filePath
           resolve(filePath)
-        } catch { resolve(url) }
+        } catch(e) { console.error('save:', e.message); resolve(url) }
       },
-      fail() { resolve(url) }
+      fail(e) { console.error('fetch:', JSON.stringify(e)); resolve(url) }
     })
   })
 }
 
-/**
- * 批量预加载图片
- */
+function fetchImage(url) { return fetchMedia(url, '/api/getImg') }
+function fetchVideo(url) { return fetchMedia(url, '/api/getVideo') }
+
 async function preloadImages(urls) {
   if (!urls || urls.length === 0) return urls
   return Promise.all(urls.map(url => url ? fetchImage(url) : Promise.resolve('')))
-}
-
-/**
- * 内网拉取视频，返回临时文件路径
- */
-function fetchVideo(url) {
-  return new Promise((resolve) => {
-    if (!url) return resolve('')
-    if (IMG_CACHE[url]) return resolve(IMG_CACHE[url])
-
-    const key = getKeyFromUrl(url)
-    if (!key) return resolve(url)
-
-    wx.cloud.callContainer({
-      config: { env: 'prod-d2gq9dsgy570dcb29' },
-      path: '/api/getVideo?key=' + encodeURIComponent(key),
-      method: 'GET',
-      success(res) {
-        const ext = key.split('.').pop() || 'mp4'
-        const filePath = `${wx.env.USER_DATA_PATH}/vid_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
-        try {
-          const data = res.data
-          if (typeof data === 'string') {
-            wx.getFileSystemManager().writeFileSync(filePath, data, 'base64')
-          } else {
-            wx.getFileSystemManager().writeFileSync(filePath, data)
-          }
-          IMG_CACHE[url] = filePath
-          resolve(filePath)
-        } catch { resolve(url) }
-      },
-      fail() { resolve(url) }
-    })
-  })
 }
 
 module.exports = { fetchImage, fetchVideo, preloadImages, getKeyFromUrl }
