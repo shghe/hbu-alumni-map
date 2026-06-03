@@ -13,6 +13,55 @@ const { adminAuth } = require('./middleware/auth')
 const app = express()
 const PORT = process.env.PORT || 80
 
+// ---- COS 内网代理端点（消灭外网下行流量）----
+const COS = require('cos-nodejs-sdk-v5')
+const cosProxy = new COS({ SecretId: process.env.COS_SECRET_ID, SecretKey: process.env.COS_SECRET_KEY })
+
+// 图片代理
+app.get('/api/getImg', async (req, res) => {
+  try {
+    const key = req.query.key
+    if (!key) return res.status(400).end()
+    const data = await new Promise((resolve, reject) => {
+      cosProxy.getObject({ Bucket: process.env.COS_BUCKET, Region: process.env.COS_REGION, Key: key }, (err, d) => {
+        if (err) reject(err); else resolve(d)
+      })
+    })
+    res.setHeader('Content-Type', data.headers['content-type'] || 'image/jpeg')
+    res.setHeader('Cache-Control', 'public, max-age=3600')
+    res.send(data.Body)
+  } catch { res.status(404).end() }
+})
+
+// 视频代理（支持 Range 请求实现拖拽播放）
+app.get('/api/getVideo', async (req, res) => {
+  try {
+    const key = req.query.key
+    if (!key) return res.status(400).end()
+    const data = await new Promise((resolve, reject) => {
+      cosProxy.getObject({ Bucket: process.env.COS_BUCKET, Region: process.env.COS_REGION, Key: key }, (err, d) => {
+        if (err) reject(err); else resolve(d)
+      })
+    })
+    const size = data.Body.length
+    const range = req.headers.range
+    if (range) {
+      const parts = range.replace(/bytes=/, '').split('-')
+      const start = parseInt(parts[0], 10)
+      const end = parts[1] ? parseInt(parts[1], 10) : Math.min(start + 1024 * 1024, size - 1)
+      res.setHeader('Content-Range', `bytes ${start}-${end}/${size}`)
+      res.setHeader('Content-Length', end - start + 1)
+      res.status(206)
+      res.send(data.Body.slice(start, end + 1))
+    } else {
+      res.setHeader('Content-Type', data.headers['content-type'] || 'video/mp4')
+      res.setHeader('Content-Length', size)
+      res.setHeader('Accept-Ranges', 'bytes')
+      res.send(data.Body)
+    }
+  } catch { res.status(404).end() }
+})
+
 // 全局中间件
 app.use(express.json())
 app.use((req, res, next) => {

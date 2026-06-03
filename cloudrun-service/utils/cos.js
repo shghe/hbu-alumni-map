@@ -140,18 +140,21 @@ function deleteFile(key) {
   })
 }
 
-async function signUrls(urls, expires = 3600) {
+async function signUrls(urls) {
   if (!urls || urls.length === 0) return []
-  const COS_HOSTS = [
-    `${BUCKET}.cos.${REGION}.myqcloud.com`
-  ]
-  return Promise.all(urls.map(url => {
-    if (!url) return Promise.resolve(url)
-    const isCos = COS_HOSTS.some(h => url.includes(h))
-    if (!isCos) return Promise.resolve(url)
-    const key = url.replace(/^https?:\/\/[^/]+\//, '')
-    return getSignedUrl(key, expires)
-  }))
+  const PROXY_BASE = process.env.PROXY_BASE || ''
+  return urls.map(url => {
+    if (!url) return ''
+    try {
+      // 提取 COS key: https://bucket.cos.region.myqcloud.com/homes/xxx.jpg → homes/xxx.jpg
+      const u = new URL(url)
+      const key = u.pathname.slice(1) // 去掉开头的 /
+      // 视频走 getVideo 代理，其他走 getImg
+      const isVideo = key.includes('video')
+      const endpoint = isVideo ? '/api/getVideo' : '/api/getImg'
+      return `${PROXY_BASE}${endpoint}?key=${encodeURIComponent(key)}`
+    } catch { return url }
+  })
 }
 
 module.exports = { BUCKET, REGION, getSTSCredentials, getSignedUrl, signUrls, deleteFile }
