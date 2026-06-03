@@ -25,8 +25,8 @@ const COS_INTERNAL = `${COS_BUCKET}.cos.${COS_REGION}.internal.tencentcloud.com`
 app.get('/api/getImg', (req, res) => {
   const key = req.query.key
   if (!key) return res.status(400).end()
-  cosProxy.getObject({ Bucket: COS_BUCKET, Region: COS_REGION, Key: key, Domain: COS_INTERNAL }, (err, data) => {
-    if (err) { console.error('getImg:', err.message); return res.status(500).end() }
+  cosProxy.getObject({ Bucket: COS_BUCKET, Region: COS_REGION, Key: key }, (err, data) => {
+    if (err) { console.error('getImg:', err.message, 'key:', key); return res.status(500).end() }
     res.setHeader('Content-Type', data.headers['content-type'] || 'image/jpeg')
     res.setHeader('Cache-Control', 'public, max-age=86400')
     data.Body.on('error', () => { try { res.end() } catch {} })
@@ -38,8 +38,8 @@ app.get('/api/getImg', (req, res) => {
 app.get('/api/getVideo', (req, res) => {
   const key = req.query.key
   if (!key) return res.status(400).end()
-  cosProxy.getObject({ Bucket: COS_BUCKET, Region: COS_REGION, Key: key, Domain: COS_INTERNAL }, (err, data) => {
-    if (err) { console.error('getVideo:', err.message); return res.status(500).end() }
+  cosProxy.getObject({ Bucket: COS_BUCKET, Region: COS_REGION, Key: key }, (err, data) => {
+    if (err) { console.error('getVideo:', err.message, 'key:', key); return res.status(500).end() }
     res.setHeader('Content-Type', data.headers['content-type'] || 'video/mp4')
     res.setHeader('Accept-Ranges', 'bytes')
     data.Body.on('error', () => { try { res.end() } catch {} })
