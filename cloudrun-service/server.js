@@ -24,8 +24,13 @@ app.get('/api/getImg', (req, res) => {
   if (!key) return res.status(400).end()
   cosProxy.getObject({ Bucket: COS_BUCKET, Region: COS_REGION, Key: key }, (err, data) => {
     if (err) { console.error('getImg:', err.message); return res.status(500).end() }
-    res.setHeader('Content-Type', data.headers['content-type'] || 'image/jpeg')
-    data.Body.pipe(res)
+    const chunks = []
+    data.Body.on('data', c => chunks.push(c))
+    data.Body.on('end', () => {
+      const buf = Buffer.concat(chunks)
+      res.json({ code: 0, data: buf.toString('base64'), type: data.headers['content-type'] || 'image/jpeg' })
+    })
+    data.Body.on('error', () => res.status(500).end())
   })
 })
 
@@ -34,8 +39,13 @@ app.get('/api/getVideo', (req, res) => {
   if (!key) return res.status(400).end()
   cosProxy.getObject({ Bucket: COS_BUCKET, Region: COS_REGION, Key: key }, (err, data) => {
     if (err) { console.error('getVideo:', err.message); return res.status(500).end() }
-    res.setHeader('Content-Type', data.headers['content-type'] || 'video/mp4')
-    data.Body.pipe(res)
+    const chunks = []
+    data.Body.on('data', c => chunks.push(c))
+    data.Body.on('end', () => {
+      const buf = Buffer.concat(chunks)
+      res.json({ code: 0, data: buf.toString('base64'), type: data.headers['content-type'] || 'video/mp4' })
+    })
+    data.Body.on('error', () => res.status(500).end())
   })
 })
 

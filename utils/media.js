@@ -19,16 +19,20 @@ function fetchMedia(url, endpoint) {
       config: { env: ENV },
       path: `${endpoint}?key=${encodeURIComponent(key)}`,
       method: 'GET',
-      dataType: 'arraybuffer',
       success(res) {
-        if (!res.data || !res.data.byteLength) return resolve('')
-        const ext = key.split('.').pop() || 'jpg'
-        const fp = `${wx.env.USER_DATA_PATH}/cos_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
-        wx.getFileSystemManager().writeFile({
-          filePath: fp, data: res.data,
-          success: () => { IMG_CACHE[url] = fp; resolve(fp) },
-          fail: () => resolve('')
-        })
+        try {
+          if (res.statusCode !== 200 || !res.data || !res.data.data) return resolve('')
+          // base64 解码
+          const buf = wx.base64ToArrayBuffer(res.data.data)
+          if (!buf || !buf.byteLength) return resolve('')
+          const ext = key.split('.').pop() || 'jpg'
+          const fp = `${wx.env.USER_DATA_PATH}/cos_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+          wx.getFileSystemManager().writeFile({
+            filePath: fp, data: buf,
+            success: () => { IMG_CACHE[url] = fp; resolve(fp) },
+            fail: () => resolve('')
+          })
+        } catch(e) { console.error('decode:', e.message); resolve('') }
       },
       fail() { resolve('') }
     })
