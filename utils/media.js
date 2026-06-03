@@ -27,12 +27,17 @@ function fetchImage(url) {
       config: { env: 'prod-d2gq9dsgy570dcb29' },
       path: '/api/getImg?key=' + encodeURIComponent(key),
       method: 'GET',
-      dataType: 'arraybuffer',
       success(res) {
         const ext = key.split('.').pop() || 'jpg'
         const filePath = `${wx.env.USER_DATA_PATH}/img_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
         try {
-          wx.getFileSystemManager().writeFileSync(filePath, res.data)
+          // res.data 是 base64 编码的图片或 ArrayBuffer
+          const data = res.data
+          if (typeof data === 'string') {
+            wx.getFileSystemManager().writeFileSync(filePath, data, 'base64')
+          } else {
+            wx.getFileSystemManager().writeFileSync(filePath, data)
+          }
           IMG_CACHE[url] = filePath
           resolve(filePath)
         } catch { resolve(url) }
@@ -65,12 +70,16 @@ function fetchVideo(url) {
       config: { env: 'prod-d2gq9dsgy570dcb29' },
       path: '/api/getVideo?key=' + encodeURIComponent(key),
       method: 'GET',
-      dataType: 'arraybuffer',
       success(res) {
         const ext = key.split('.').pop() || 'mp4'
         const filePath = `${wx.env.USER_DATA_PATH}/vid_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
         try {
-          wx.getFileSystemManager().writeFileSync(filePath, res.data)
+          const data = res.data
+          if (typeof data === 'string') {
+            wx.getFileSystemManager().writeFileSync(filePath, data, 'base64')
+          } else {
+            wx.getFileSystemManager().writeFileSync(filePath, data)
+          }
           IMG_CACHE[url] = filePath
           resolve(filePath)
         } catch { resolve(url) }
