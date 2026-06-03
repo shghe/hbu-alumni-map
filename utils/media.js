@@ -1,7 +1,9 @@
 const IMG_CACHE = {}
+const PENDING_CACHE = {}
 const ENV = 'prod-d2gq9dsgy570dcb29'
 const SERVICE = 'alumni-api'
-const CHUNK = 393216 // 384KB; divisible by 3, so base64 chunks can be concatenated safely.
+const IMAGE_CHUNK = 393216 // 384KB; divisible by 3, so base64 chunks can be concatenated safely.
+const VIDEO_CHUNK = 614400 // 600KB; still below the 1MB-ish callContainer JSON response ceiling.
 const CACHE_KEY = 'media_file_cache_v1'
 
 function isLocalFile(url) {
@@ -74,19 +76,19 @@ function callMedia(path) {
   })
 }
 
-async function fetchChunked(key, endpoint) {
+async function fetchChunked(key, endpoint, chunkSize) {
   const chunks = []
   let offset = 0
   let total = Infinity
 
   while (offset < total) {
-    const res = await callMedia(`${endpoint}?key=${encodeURIComponent(key)}&offset=${offset}&size=${CHUNK}`)
+    const res = await callMedia(`${endpoint}?key=${encodeURIComponent(key)}&offset=${offset}&size=${chunkSize}`)
     if (!res || res.code !== 0 || !res.data || !res.size) throw new Error((res && res.message) || 'empty chunk')
 
     chunks.push(res.data)
     total = Number(res.total) || 0
     offset += Number(res.size) || 0
-    if (!total || res.size < CHUNK) break
+    if (!total || res.size < chunkSize) break
   }
 
   const filePath = localPathForKey(key)
@@ -101,30 +103,38 @@ async function fetchChunked(key, endpoint) {
   })
 }
 
-function fetchMedia(url, endpoint) {
+function fetchMedia(url, endpoint, chunkSize) {
   return new Promise((resolve) => {
     if (!url) return resolve('')
     if (IMG_CACHE[url]) return resolve(IMG_CACHE[url])
 
     const key = getKeyFromUrl(url)
     if (!key) return resolve(url)
+    const pendingKey = `${endpoint}:${key}`
+    if (PENDING_CACHE[pendingKey]) {
+      PENDING_CACHE[pendingKey].then(resolve).catch(() => resolve(''))
+      return
+    }
 
-    getCachedFile(key)
-      .then((cached) => cached || fetchChunked(key, endpoint))
+    PENDING_CACHE[pendingKey] = getCachedFile(key)
+      .then((cached) => cached || fetchChunked(key, endpoint, chunkSize))
       .then((filePath) => {
         IMG_CACHE[url] = filePath
         setCachedFile(key, filePath)
-        resolve(filePath)
+        delete PENDING_CACHE[pendingKey]
+        return filePath
       })
       .catch((err) => {
+        delete PENDING_CACHE[pendingKey]
         console.error('media proxy failed:', err.errMsg || err.message || err)
-        resolve('')
+        return ''
       })
+    PENDING_CACHE[pendingKey].then(resolve)
   })
 }
 
-function fetchImage(url) { return fetchMedia(url, '/api/media/getImg') }
-function fetchVideo(url) { return fetchMedia(url, '/api/media/getVideo') }
+function fetchImage(url) { return fetchMedia(url, '/api/media/getImg', IMAGE_CHUNK) }
+function fetchVideo(url) { return fetchMedia(url, '/api/media/getVideo', VIDEO_CHUNK) }
 
 async function preloadImages(urls) {
   if (!urls || urls.length === 0) return []

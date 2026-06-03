@@ -72,21 +72,35 @@ Page({
   },
 
   async loadHeroMedia(photoKeys, videoPosterKey) {
-    try {
-      const firstPhotoPromise = photoKeys[0] ? fetchImage(photoKeys[0]) : Promise.resolve('')
-      const videoPosterPromise = videoPosterKey ? fetchImage(videoPosterKey) : Promise.resolve('')
-      const [firstPhoto, videoPoster] = await Promise.all([firstPhotoPromise, videoPosterPromise])
-
+    const firstPhotoPromise = photoKeys[0] ? fetchImage(photoKeys[0]) : Promise.resolve('')
+    firstPhotoPromise.then((firstPhoto) => {
       if (firstPhoto) this.setData({ 'home.photos': [firstPhoto] })
-      if (videoPoster) this.setData({ 'home.videoPoster': videoPoster })
+    })
 
+    if (videoPosterKey) {
+      fetchImage(videoPosterKey).then((videoPoster) => {
+        if (videoPoster) this.setData({ 'home.videoPoster': videoPoster })
+      })
+    }
+
+    try {
+      const firstPhoto = await firstPhotoPromise
       const restPhotos = await preloadImages(photoKeys.slice(1))
       this.setData({
         'home.photos': [firstPhoto, ...restPhotos].filter(Boolean)
       })
+      this.prefetchVideo()
     } catch (err) {
       console.error('load media failed:', err.errMsg || err.message || err)
     }
+  },
+
+  prefetchVideo() {
+    const { video, videoKey } = this.data.home
+    if (video || !videoKey) return
+    fetchVideo(videoKey).then((url) => {
+      if (url) this.setData({ 'home.video': url })
+    })
   },
 
   loadReviews() {
