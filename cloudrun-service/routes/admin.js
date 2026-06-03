@@ -73,6 +73,20 @@ router.put('/homes/:id', async (req, res) => {
        id]
     )
 
+    // 收集旧文件，用于清理 COS
+    const { deleteFile } = require('../utils/cos')
+    const [[oldHome]] = await pool.execute('SELECT video, video_poster FROM alumni_homes WHERE id = ?', [id])
+    const [oldPhotos] = await pool.execute('SELECT url FROM home_photos WHERE home_id = ?', [id])
+    const oldUrls = [...oldPhotos.map(p => p.url), oldHome.video, oldHome.video_poster].filter(Boolean)
+    const newUrls = [...(data.photos || []), data.video, data.videoPoster].filter(Boolean)
+
+    // 删除不再引用的 COS 文件
+    for (const url of oldUrls) {
+      if (!newUrls.includes(url)) {
+        try { await deleteFile(url.replace(/^https?:\/\/[^/]+\//, '')) } catch {}
+      }
+    }
+
     // 重建 photos
     await pool.execute('DELETE FROM home_photos WHERE home_id = ?', [id])
     if (data.photos && data.photos.length > 0) {
