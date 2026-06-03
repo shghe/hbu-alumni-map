@@ -19,6 +19,11 @@ const cosProxy = new COS({ SecretId: process.env.COS_SECRET_ID, SecretKey: proce
 const COS_BUCKET = process.env.COS_BUCKET || 'hbu-alumni-map-single-shanghai-1430752917'
 const COS_REGION = process.env.COS_REGION || 'ap-shanghai'
 
+// 测试接口——直接返回 1x1 红色像素 base64
+app.get('/api/ping', (req, res) => {
+  res.json({ code: 0, data: 'R0lGODlhAQABAIAAAP8AAP8AACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', type: 'image/gif' })
+})
+
 app.get('/api/getImg', (req, res) => {
   const key = req.query.key
   if (!key) return res.status(400).end()
