@@ -21,18 +21,16 @@ function fetchMedia(url, endpoint) {
       method: 'GET',
       success(res) {
         try {
-          if (res.statusCode !== 200 || !res.data || !res.data.data) return resolve('')
-          // base64 解码
-          const buf = wx.base64ToArrayBuffer(res.data.data)
-          if (!buf || !buf.byteLength) return resolve('')
+          const d = res.data
+          if (!d || !d.data) return resolve('')
           const ext = key.split('.').pop() || 'jpg'
           const fp = `${wx.env.USER_DATA_PATH}/cos_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
           wx.getFileSystemManager().writeFile({
-            filePath: fp, data: buf,
+            filePath: fp, data: d.data, encoding: 'base64',
             success: () => { IMG_CACHE[url] = fp; resolve(fp) },
             fail: () => resolve('')
           })
-        } catch(e) { console.error('decode:', e.message); resolve('') }
+        } catch(e) { console.error('write:', e.message); resolve('') }
       },
       fail() { resolve('') }
     })
