@@ -1,5 +1,4 @@
 const { api } = require('../../../utils/api')
-const { preloadImages } = require('../../../utils/media')
 
 function formatDate(date) {
   if (!date) return ''
@@ -92,17 +91,13 @@ Page({
     })
   },
 
-  async toggleReviews(event) {
+  toggleReviews(event) {
     const homeId = event.currentTarget.dataset.id
     if (this.data.expandedHome === homeId) {
       this.setData({ expandedHome: null, homeReviews: [] })
       return
     }
-    const reviews = []
-    for (const r of this.data.allReviews.filter((r) => r.homeId === homeId)) {
-      const photos = await preloadImages(r.photos || [])
-      reviews.push({ ...r, photos })
-    }
+    const reviews = this.data.allReviews.filter((r) => r.homeId === homeId)
     this.setData({ expandedHome: homeId, homeReviews: reviews })
   },
 
