@@ -54,8 +54,8 @@ function fetchMedia(url, endpoint) {
   })
 }
 
-function fetchImage(url) { return fetchMedia(url, '/api/getImg') }
-function fetchVideo(url) { return fetchMedia(url, '/api/getVideo') }
+function fetchImage(url) { return fetchMedia(url, '/api/media/getImg') }
+function fetchVideo(url) { return fetchMedia(url, '/api/media/getVideo') }
 
 async function preloadImages(urls) {
   if (!urls || urls.length === 0) return urls

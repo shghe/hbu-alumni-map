@@ -21,7 +21,7 @@ app.use(express.json({ limit: '10mb' }))
 app.use((req, res, next) => { console.log(`${new Date().toISOString()} ${req.method} ${req.path}`); next() })
 
 // 路由
-app.use('/api', mediaRouter)
+app.use('/api/media', mediaRouter)
 app.use('/api/homes', homesRouter)
 app.use('/api/reviews', reviewsRouter)
 app.use('/api/auth', authRouter)

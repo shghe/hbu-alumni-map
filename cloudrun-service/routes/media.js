@@ -35,4 +35,12 @@ router.get('/getVideo', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
+router.get('/diag', (req, res) => {
+  const dns = require('dns')
+  const host = `${BUCKET}.cos.${REGION}.myqcloud.com`
+  dns.resolve4(host, (err, addrs) => {
+    res.json({ host, ips: addrs || [], internal: addrs ? addrs.some(ip => ip.startsWith('10.') || ip.startsWith('100.') || ip.startsWith('172.')) : false })
+  })
+})
+
 module.exports = router
