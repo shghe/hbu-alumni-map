@@ -27,6 +27,7 @@
   <view wx:if="{{home.hasVideo}}" class="video-card">
     <video
       wx:if="{{home.videoPlaying && home.video}}"
+      id="homeVideo"
       class="video-player"
       src="{{home.video}}"
       controls
