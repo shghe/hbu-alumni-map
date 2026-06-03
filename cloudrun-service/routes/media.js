@@ -149,7 +149,7 @@ router.post('/upload/complete', async (req, res) => {
 
     parts.sort((a, b) => a.PartNumber - b.PartNumber)
     await cosCall('multipartComplete', { Bucket: BUCKET, Region: REGION, Key: key, UploadId: uploadId, Parts: parts })
-    res.json({ code: 0, url: `https://${BUCKET}.cos.${REGION}.myqcloud.com/${key}` })
+    res.json({ code: 0, url: key })
   } catch (e) {
     console.error('media upload complete error:', e)
     res.status(500).json({ code: 500, message: e.message })

@@ -22,7 +22,7 @@ function normalizeKey(value) {
 function normalizeCosUrl(url) {
   const key = normalizeKey(url)
   if (!key) return url || ''
-  return `https://${BUCKET}.cos.${REGION}.myqcloud.com/${key}`
+  return key
 }
 
 function deleteFile(keyOrUrl) {
