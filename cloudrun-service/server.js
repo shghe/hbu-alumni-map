@@ -104,8 +104,27 @@ app.use((err, req, res, next) => {
   res.status(500).json({ code: 500, message: '服务器内部错误' })
 })
 
+// 启动时迁移旧桶 URL → 新桶
+async function migrateOldUrls() {
+  const { pool } = require('./utils/db')
+  const oldPrefix = 'hbu-alumni-map-1430752917'
+  const newPrefix = process.env.COS_BUCKET || 'hbu-alumni-map-single-1430752917'
+  try {
+    for (const table of ['home_photos', 'review_photos']) {
+      await pool.execute(`UPDATE ${table} SET url = REPLACE(url, '${oldPrefix}', '${newPrefix}') WHERE url LIKE '%${oldPrefix}%'`)
+    }
+    for (const col of ['video', 'video_poster']) {
+      await pool.execute(`UPDATE alumni_homes SET ${col} = REPLACE(${col}, '${oldPrefix}', '${newPrefix}') WHERE ${col} LIKE '%${oldPrefix}%'`)
+    }
+    console.log('URL migration done')
+  } catch (e) {
+    console.log('URL migration skipped:', e.message)
+  }
+}
+
 // 启动
-initDB().then(() => {
+initDB().then(async () => {
+  await migrateOldUrls()
   app.listen(PORT, () => console.log(`API server running on port ${PORT}`))
 }).catch(err => {
   console.error('DB init failed:', err.message)
