@@ -2,9 +2,6 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
 require('dotenv').config()
 const express = require('express')
 const COS = require('cos-nodejs-sdk-v5')
-const crypto = require('crypto')
-const https = require('https')
-
 const homesRouter = require('./routes/homes')
 const reviewsRouter = require('./routes/reviews')
 const adminRouter = require('./routes/admin')
@@ -50,18 +47,6 @@ app.get('/api/getVideo', async (req, res) => {
     const total = buf.length
     const piece = buf.slice(start, start + chunkSize)
     res.json({ code: 0, data: piece.toString('base64'), total, offset: start, size: piece.length, mime: data.headers['content-type'] || 'video/mp4' })
-  } catch (e) { res.status(500).json({ error: e.message }) }
-})
-
-// 上传：小程序 → callContainer → 云托管 → COS
-app.post('/api/files/upload', express.raw({ type: '*/*', limit: '10mb' }), async (req, res) => {
-  try {
-    const key = req.query.key
-    if (!key || !req.body || req.body.length === 0) return res.status(400).json({ error: 'key & body required' })
-    await new Promise((resolve, reject) => {
-      cos.putObject({ Bucket: BUCKET, Region: REGION, Key: key, Body: req.body }, (e, d) => { if (e) reject(e); else resolve(d) })
-    })
-    res.json({ code: 0, url: `https://${BUCKET}.cos.${REGION}.myqcloud.com/${key}` })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
