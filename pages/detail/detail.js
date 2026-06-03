@@ -186,10 +186,9 @@ Page({
       wx.showLoading({ title: '加载视频...' })
       url = await fetchVideo(videoKey)
       wx.hideLoading()
-      if (url) this.setData({ 'home.video': url })
     }
     if (!url) return wx.showToast({ title: '视频加载失败', icon: 'none' })
-    wx.previewMedia({ sources: [{ url, type: 'video' }], current: 0 })
+    this.setData({ 'home.video': url, 'home.videoPlaying': true })
   },
 
   onShareAppMessage() {
