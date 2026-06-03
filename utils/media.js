@@ -7,6 +7,19 @@ function getKeyFromUrl(url) {
   catch { return url }
 }
 
+function fetchInternal(path) {
+  return new Promise((resolve, reject) => {
+    wx.cloud.callContainer({
+      config: { env: ENV },
+      path,
+      method: 'GET',
+      dataType: 'arraybuffer',
+      success: (res) => resolve(res.data),
+      fail: reject
+    })
+  })
+}
+
 function fetchMedia(url) {
   return new Promise((resolve) => {
     if (!url) return resolve('')
@@ -15,28 +28,32 @@ function fetchMedia(url) {
     const key = getKeyFromUrl(url)
     if (!key) return resolve(url)
 
-    // 1. 通过 callContainer 获取代理下载路径
+    // 1. 内网拉代理路径
     wx.cloud.callContainer({
       config: { env: ENV },
       path: `/api/getProxyPath?key=${encodeURIComponent(key)}`,
       method: 'GET',
       success(res) {
         if (!res.data || !res.data.downloadUrl) return resolve(url)
-        const downloadUrl = res.data.downloadUrl
+        const p = res.data.downloadUrl
 
-        // 2. wx.downloadFile 拉到本地临时文件
+        // 2. callContainer 直接拉文件（arraybuffer），写临时文件
         wx.cloud.callContainer({
           config: { env: ENV },
-          path: downloadUrl,
+          path: p,
           method: 'GET',
-          dataType: 'filePath',
+          dataType: 'arraybuffer',
           success(d) {
-            if (d.filePath) {
-              IMG_CACHE[url] = d.filePath
-              resolve(d.filePath)
-            } else {
-              resolve(url)
-            }
+            if (!d.data || !d.data.byteLength) return resolve(url)
+            try {
+              const ext = key.split('.').pop() || 'jpg'
+              const fp = `${wx.env.USER_DATA_PATH}/dl_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+              wx.getFileSystemManager().writeFile({
+                filePath: fp, data: d.data,
+                success: () => { IMG_CACHE[url] = fp; resolve(fp) },
+                fail: () => resolve(url)
+              })
+            } catch { resolve(url) }
           },
           fail() { resolve(url) }
         })
