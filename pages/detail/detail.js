@@ -1,6 +1,7 @@
 const localHomes = require('../../data/homes')
 const { api } = require('../../utils/api')
 const { fetchSTS, uploadFile, uploadFiles } = require('../../utils/cos')
+const { preloadImages } = require('../../utils/media')
 
 function formatDate(date) {
   const d = new Date(date)
