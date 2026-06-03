@@ -1,6 +1,7 @@
 const localHomes = require('../../data/homes')
 const { api } = require('../../utils/api')
 const { fetchSTS, uploadFile, uploadFiles } = require('../../utils/cos')
+const { preloadImages, fetchVideo } = require('../../utils/media')
 
 function formatDate(date) {
   const d = new Date(date)
@@ -55,13 +56,26 @@ Page({
     })
   },
 
-  renderHome(home) {
+  async renderHome(home) {
     const description = home.description || ''
+    const photos = home.photos || []
+    const poster = home.videoPoster || ''
+    const video = home.video || ''
+
+    const [loadedPhotos, loadedPoster, loadedVideo] = await Promise.all([
+      preloadImages(photos),
+      poster ? preloadImages([poster]).then(r => r[0]) : Promise.resolve(''),
+      video ? fetchVideo(video) : Promise.resolve('')
+    ])
+
     this.setData({
       home: {
         ...home,
         id: home._id || home.id,
-        descriptionLines: description.split('\n')
+        descriptionLines: description.split('\n'),
+        photos: loadedPhotos,
+        videoPoster: loadedPoster,
+        video: loadedVideo
       },
       loading: false
     })

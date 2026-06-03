@@ -17,52 +17,34 @@ const PORT = process.env.PORT || 80
 const COS = require('cos-nodejs-sdk-v5')
 const cosProxy = new COS({ SecretId: process.env.COS_SECRET_ID, SecretKey: process.env.COS_SECRET_KEY })
 
+const COS_BUCKET = process.env.COS_BUCKET || 'hbu-alumni-map-single-shanghai-1430752917'
+const COS_REGION = process.env.COS_REGION || 'ap-shanghai'
+const COS_INTERNAL = `${COS_BUCKET}.cos.${COS_REGION}.internal.tencentcloud.com`
+
 // 图片代理
-app.get('/api/getImg', async (req, res) => {
-  try {
-    const key = req.query.key
-    if (!key) return res.status(400).end()
-    const data = await new Promise((resolve, reject) => {
-      cosProxy.getObject({ Bucket: process.env.COS_BUCKET, Region: process.env.COS_REGION, Key: key }, (err, d) => {
-        if (err) reject(err); else resolve(d)
-      })
-    })
+app.get('/api/getImg', (req, res) => {
+  const key = req.query.key
+  if (!key) return res.status(400).end()
+  cosProxy.getObject({ Bucket: COS_BUCKET, Region: COS_REGION, Key: key, Domain: COS_INTERNAL }, (err, data) => {
+    if (err) { console.error('getImg:', err.message); return res.status(500).end() }
     res.setHeader('Content-Type', data.headers['content-type'] || 'image/jpeg')
-    res.setHeader('Cache-Control', 'public, max-age=3600')
-    res.send(data.Body)
-  } catch (e) {
-    console.error('getImg error:', e.message)
-    res.status(500).json({ error: e.message, key: req.query.key, bucket: process.env.COS_BUCKET })
-  }
+    res.setHeader('Cache-Control', 'public, max-age=86400')
+    data.Body.on('error', () => { try { res.end() } catch {} })
+    data.Body.pipe(res)
+  })
 })
 
-// 视频代理（支持 Range 请求实现拖拽播放）
-app.get('/api/getVideo', async (req, res) => {
-  try {
-    const key = req.query.key
-    if (!key) return res.status(400).end()
-    const data = await new Promise((resolve, reject) => {
-      cosProxy.getObject({ Bucket: process.env.COS_BUCKET, Region: process.env.COS_REGION, Key: key }, (err, d) => {
-        if (err) reject(err); else resolve(d)
-      })
-    })
-    const size = data.Body.length
-    const range = req.headers.range
-    if (range) {
-      const parts = range.replace(/bytes=/, '').split('-')
-      const start = parseInt(parts[0], 10)
-      const end = parts[1] ? parseInt(parts[1], 10) : Math.min(start + 1024 * 1024, size - 1)
-      res.setHeader('Content-Range', `bytes ${start}-${end}/${size}`)
-      res.setHeader('Content-Length', end - start + 1)
-      res.status(206)
-      res.send(data.Body.slice(start, end + 1))
-    } else {
-      res.setHeader('Content-Type', data.headers['content-type'] || 'video/mp4')
-      res.setHeader('Content-Length', size)
-      res.setHeader('Accept-Ranges', 'bytes')
-      res.send(data.Body)
-    }
-  } catch { res.status(404).end() }
+// 视频代理
+app.get('/api/getVideo', (req, res) => {
+  const key = req.query.key
+  if (!key) return res.status(400).end()
+  cosProxy.getObject({ Bucket: COS_BUCKET, Region: COS_REGION, Key: key, Domain: COS_INTERNAL }, (err, data) => {
+    if (err) { console.error('getVideo:', err.message); return res.status(500).end() }
+    res.setHeader('Content-Type', data.headers['content-type'] || 'video/mp4')
+    res.setHeader('Accept-Ranges', 'bytes')
+    data.Body.on('error', () => { try { res.end() } catch {} })
+    data.Body.pipe(res)
+  })
 })
 
 // 全局中间件
