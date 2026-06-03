@@ -129,6 +129,17 @@ function getSignedUrl(key, expires = 3600) {
  * @param {number} expires - 有效期秒数
  * @returns {Promise<string[]>} 预签名 URL 列表
  */
+/**
+ * 删除 COS 对象
+ */
+function deleteFile(key) {
+  return new Promise((resolve, reject) => {
+    cos.deleteObject({ Bucket: BUCKET, Region: REGION, Key: key }, (err, data) => {
+      if (err) reject(err); else resolve(data)
+    })
+  })
+}
+
 async function signUrls(urls, expires = 3600) {
   if (!urls || urls.length === 0) return []
   const COS_HOSTS = [
@@ -144,4 +155,4 @@ async function signUrls(urls, expires = 3600) {
   }))
 }
 
-module.exports = { BUCKET, REGION, getSTSCredentials, getSignedUrl, signUrls }
+module.exports = { BUCKET, REGION, getSTSCredentials, getSignedUrl, signUrls, deleteFile }

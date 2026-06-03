@@ -101,19 +101,23 @@ router.delete('/homes/:id', async (req, res) => {
     const id = parseInt(req.params.id, 10)
     if (isNaN(id)) return res.status(400).json({ code: 400, message: 'id 无效' })
 
-    // 先获取名称用于日志
-    const [[home]] = await pool.execute('SELECT name FROM alumni_homes WHERE id = ?', [id])
-    const homeName = home ? home.name : ''
-
-    // 统计被删除的评价数
-    const [[{ cnt: reviewCount }]] = await pool.execute(
-      'SELECT COUNT(*) as cnt FROM reviews WHERE home_id = ?', [id]
+    // 收集所有 COS 文件
+    const { deleteFile } = require('../utils/cos')
+    const [[home]] = await pool.execute('SELECT name, video, video_poster FROM alumni_homes WHERE id = ?', [id])
+    const [photos] = await pool.execute('SELECT url FROM home_photos WHERE home_id = ?', [id])
+    const [reviewPhotos] = await pool.execute(
+      'SELECT rp.url FROM review_photos rp JOIN reviews r ON rp.review_id = r.id WHERE r.home_id = ?', [id]
     )
 
-    // CASCADE 会自动删除关联的 photos, services, reviews, review_photos
+    for (const url of [...photos.map(p => p.url), ...reviewPhotos.map(p => p.url), home.video, home.video_poster]) {
+      if (!url) continue
+      try { await deleteFile(url.replace(/^https?:\/\/[^/]+\//, '')) } catch {}
+    }
+
+    const [[{ cnt: reviewCount }]] = await pool.execute('SELECT COUNT(*) as cnt FROM reviews WHERE home_id = ?', [id])
     await pool.execute('DELETE FROM alumni_homes WHERE id = ?', [id])
 
-    await logAction(req.openid, req.adminName, 'delete', { homeId: id, name: homeName, deletedReviews: reviewCount })
+    await logAction(req.openid, req.adminName, 'delete', { homeId: id, name: home.name || '', deletedReviews: reviewCount })
     res.json({ code: 0, deletedReviews: reviewCount })
   } catch (err) {
     console.error('DELETE /admin/homes/:id error:', err)
@@ -162,8 +166,14 @@ router.delete('/reviews/:id', async (req, res) => {
     const id = parseInt(req.params.id, 10)
     if (isNaN(id)) return res.status(400).json({ code: 400, message: 'id 无效' })
 
+    const { deleteFile } = require('../utils/cos')
     const [[review]] = await pool.execute('SELECT * FROM reviews WHERE id = ?', [id])
     const reviewInfo = review ? { nickname: review.nickname, homeId: String(review.home_id) } : {}
+
+    const [photos] = await pool.execute('SELECT url FROM review_photos WHERE review_id = ?', [id])
+    for (const p of photos) {
+      try { await deleteFile(p.url.replace(/^https?:\/\/[^/]+\//, '')) } catch {}
+    }
 
     await pool.execute('DELETE FROM reviews WHERE id = ?', [id])
 
