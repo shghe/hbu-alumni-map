@@ -1,6 +1,7 @@
 const localHomes = require('../../data/homes')
 const { api } = require('../../utils/api')
 const { fetchSTS, uploadFile, uploadFiles } = require('../../utils/cos')
+const { preloadImages, fetchVideo } = require('../../utils/media')
 
 function formatDate(date) {
   const d = new Date(date)
@@ -46,23 +47,28 @@ Page({
     })
   },
 
-  renderHome(home) {
+  async renderHome(home) {
     const description = home.description || ''
+    const [photos, poster, video] = await Promise.all([
+      preloadImages(home.photos || []),
+      home.videoPoster ? preloadImages([home.videoPoster]).then(r => r[0]) : Promise.resolve(''),
+      home.video ? fetchVideo(home.video) : Promise.resolve('')
+    ])
     this.setData({
-      home: { ...home, id: home._id || home.id, descriptionLines: description.split('\n') },
+      home: { ...home, id: home._id || home.id, descriptionLines: description.split('\n'), photos, videoPoster: poster, video },
       loading: false
     })
     wx.setNavigationBarTitle({ title: home.city || '校友之家' })
   },
 
   loadReviews() {
-    api.get('/reviews', { homeId: this.homeId }).then((res) => {
+    api.get('/reviews', { homeId: this.homeId }).then(async (res) => {
       if (res.code === 0 && res.data) {
-        const reviews = res.data.map((r) => ({
-          ...r,
-          avatar: r.nickname ? r.nickname.slice(0, 1) : '?',
-          createTime: r.createTime || r.created_at ? formatDate(r.createTime || r.created_at) : ''
-        }))
+        const reviews = []
+        for (const r of res.data) {
+          const photos = await preloadImages(r.photos || [])
+          reviews.push({ ...r, avatar: r.nickname ? r.nickname.slice(0, 1) : '?', createTime: r.createTime || r.created_at ? formatDate(r.createTime || r.created_at) : '', photos })
+        }
         this.setData({ reviews, reviewsLoading: false })
       } else { this.setData({ reviewsLoading: false }) }
     }).catch(() => { this.setData({ reviewsLoading: false }) })
