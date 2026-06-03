@@ -142,7 +142,12 @@ function deleteFile(key) {
 
 async function signUrls(urls, expires = 3600) {
   if (!urls || urls.length === 0) return []
-  const COS_HOSTS = [`${BUCKET}.cos.${REGION}.myqcloud.com`]
+  // 兼容所有历史 COS 桶域名
+  const COS_HOSTS = [
+    `${BUCKET}.cos.${REGION}.myqcloud.com`,
+    'hbu-alumni-map-single-1430752917.cos.ap-beijing.myqcloud.com',
+    'hbu-alumni-map-1430752917.cos.ap-beijing.myqcloud.com'
+  ]
   return Promise.all(urls.map(url => {
     if (!url) return Promise.resolve(url)
     const isCos = COS_HOSTS.some(h => url.includes(h))
