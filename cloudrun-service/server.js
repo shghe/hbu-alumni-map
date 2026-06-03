@@ -30,7 +30,10 @@ app.get('/api/getImg', async (req, res) => {
     res.setHeader('Content-Type', data.headers['content-type'] || 'image/jpeg')
     res.setHeader('Cache-Control', 'public, max-age=3600')
     res.send(data.Body)
-  } catch { res.status(404).end() }
+  } catch (e) {
+    console.error('getImg error:', e.message)
+    res.status(500).json({ error: e.message, key: req.query.key, bucket: process.env.COS_BUCKET })
+  }
 })
 
 // 视频代理（支持 Range 请求实现拖拽播放）
