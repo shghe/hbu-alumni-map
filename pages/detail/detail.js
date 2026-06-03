@@ -73,16 +73,16 @@ Page({
 
   async loadHeroMedia(photoKeys, videoPosterKey) {
     try {
-      const firstPhoto = photoKeys[0] ? await fetchImage(photoKeys[0]) : ''
-      if (firstPhoto) this.setData({ 'home.photos': [firstPhoto] })
+      const firstPhotoPromise = photoKeys[0] ? fetchImage(photoKeys[0]) : Promise.resolve('')
+      const videoPosterPromise = videoPosterKey ? fetchImage(videoPosterKey) : Promise.resolve('')
+      const [firstPhoto, videoPoster] = await Promise.all([firstPhotoPromise, videoPosterPromise])
 
-      const [restPhotos, videoPoster] = await Promise.all([
-        preloadImages(photoKeys.slice(1)),
-        videoPosterKey ? fetchImage(videoPosterKey) : Promise.resolve('')
-      ])
+      if (firstPhoto) this.setData({ 'home.photos': [firstPhoto] })
+      if (videoPoster) this.setData({ 'home.videoPoster': videoPoster })
+
+      const restPhotos = await preloadImages(photoKeys.slice(1))
       this.setData({
-        'home.photos': [firstPhoto, ...restPhotos].filter(Boolean),
-        'home.videoPoster': videoPoster
+        'home.photos': [firstPhoto, ...restPhotos].filter(Boolean)
       })
     } catch (err) {
       console.error('load media failed:', err.errMsg || err.message || err)

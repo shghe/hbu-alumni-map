@@ -53,18 +53,19 @@ async function canUpload(req, key) {
 }
 
 async function getObjectChunk(key, start, size) {
-  const head = await cosCall('headObject', { Bucket: BUCKET, Region: REGION, Key: key })
-  const total = Number(head.headers && head.headers['content-length']) || 0
-  if (!total || start >= total) {
-    return { total, body: Buffer.alloc(0), mime: (head.headers && head.headers['content-type']) || 'application/octet-stream' }
-  }
-
-  const end = Math.min(start + size - 1, total - 1)
+  const end = start + size - 1
   const data = await cosCall('getObject', { Bucket: BUCKET, Region: REGION, Key: key, Range: `bytes=${start}-${end}` })
+  const headers = data.headers || {}
+  const body = Buffer.isBuffer(data.Body) ? data.Body : Buffer.from(data.Body || '')
+  const contentRange = headers['content-range'] || ''
+  const totalFromRange = contentRange.match(/\/(\d+)$/)
+  let total = totalFromRange ? Number(totalFromRange[1]) : 0
+  if (!total) total = body.length === size ? start + body.length + 1 : start + body.length
+
   return {
     total,
-    body: Buffer.isBuffer(data.Body) ? data.Body : Buffer.from(data.Body || ''),
-    mime: (head.headers && head.headers['content-type']) || (data.headers && data.headers['content-type']) || 'application/octet-stream'
+    body,
+    mime: headers['content-type'] || 'application/octet-stream'
   }
 }
 

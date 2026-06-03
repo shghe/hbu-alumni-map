@@ -2,6 +2,7 @@ const IMG_CACHE = {}
 const ENV = 'prod-d2gq9dsgy570dcb29'
 const SERVICE = 'alumni-api'
 const CHUNK = 393216 // 384KB; divisible by 3, so base64 chunks can be concatenated safely.
+const CACHE_KEY = 'media_file_cache_v1'
 
 function isLocalFile(url) {
   return /^wxfile:\/\//.test(url) || /^http:\/\/tmp\//.test(url) || /^\/assets\//.test(url)
@@ -22,6 +23,41 @@ function getKeyFromUrl(url) {
   } catch (e) {
     return ''
   }
+}
+
+function localPathForKey(key) {
+  const safeName = key.replace(/[^\w.-]/g, '_')
+  return `${wx.env.USER_DATA_PATH}/cos_${safeName}`
+}
+
+function fileExists(filePath) {
+  return new Promise((resolve) => {
+    wx.getFileSystemManager().access({
+      path: filePath,
+      success: () => resolve(true),
+      fail: () => resolve(false)
+    })
+  })
+}
+
+function getCacheMap() {
+  try { return wx.getStorageSync(CACHE_KEY) || {} }
+  catch (e) { return {} }
+}
+
+function setCachedFile(key, filePath) {
+  IMG_CACHE[key] = filePath
+  try {
+    const cache = getCacheMap()
+    cache[key] = filePath
+    wx.setStorageSync(CACHE_KEY, cache)
+  } catch (e) {}
+}
+
+async function getCachedFile(key) {
+  const cached = IMG_CACHE[key] || getCacheMap()[key] || localPathForKey(key)
+  if (cached && await fileExists(cached)) return cached
+  return ''
 }
 
 function callMedia(path) {
@@ -53,8 +89,7 @@ async function fetchChunked(key, endpoint) {
     if (!total || res.size < CHUNK) break
   }
 
-  const ext = key.split('.').pop() || 'jpg'
-  const filePath = `${wx.env.USER_DATA_PATH}/cos_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+  const filePath = localPathForKey(key)
   return new Promise((resolve, reject) => {
     wx.getFileSystemManager().writeFile({
       filePath,
@@ -74,9 +109,11 @@ function fetchMedia(url, endpoint) {
     const key = getKeyFromUrl(url)
     if (!key) return resolve(url)
 
-    fetchChunked(key, endpoint)
+    getCachedFile(key)
+      .then((cached) => cached || fetchChunked(key, endpoint))
       .then((filePath) => {
         IMG_CACHE[url] = filePath
+        setCachedFile(key, filePath)
         resolve(filePath)
       })
       .catch((err) => {
