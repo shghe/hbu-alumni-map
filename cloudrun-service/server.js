@@ -13,51 +13,30 @@ const { adminAuth } = require('./middleware/auth')
 const app = express()
 const PORT = process.env.PORT || 80
 
-// ---- COS 内网代理（文件落地 /tmp，wx.downloadFile 全端兼容）----
+// ---- COS 内网代理（直接流式返回，单次 callContainer 搞定）----
 const COS = require('cos-nodejs-sdk-v5')
-const fs = require('fs')
-const path = require('path')
 const cosProxy = new COS({ SecretId: process.env.COS_SECRET_ID, SecretKey: process.env.COS_SECRET_KEY })
 const COS_BUCKET = process.env.COS_BUCKET || 'hbu-alumni-map-single-shanghai-1430752917'
 const COS_REGION = process.env.COS_REGION || 'ap-shanghai'
 
-// 清理超过 10 分钟的缓存文件
-setInterval(() => {
-  const tmpDir = '/tmp'
-  fs.readdir(tmpDir, (err, files) => {
-    if (err) return
-    const now = Date.now()
-    files.filter(f => f.startsWith('cos_')).forEach(f => {
-      const fp = path.join(tmpDir, f)
-      fs.stat(fp, (_, s) => { if (s && now - s.mtimeMs > 600000) fs.unlink(fp, () => {}) })
-    })
-  })
-}, 300000)
-
-// 获取代理下载路径：后端从 COS 拉到 /tmp，返回容器内文件路径
-app.get('/api/getProxyPath', (req, res) => {
+app.get('/api/getImg', (req, res) => {
   const key = req.query.key
-  if (!key) return res.status(400).json({ error: 'key required' })
-
-  const tmpName = `cos_${Date.now()}_${Math.random().toString(36).slice(2)}_${path.basename(key)}`
-  const tmpPath = path.join('/tmp', tmpName)
-
+  if (!key) return res.status(400).end()
   cosProxy.getObject({ Bucket: COS_BUCKET, Region: COS_REGION, Key: key }, (err, data) => {
-    if (err) { console.error('proxy get:', err.message); return res.status(500).json({ error: err.message }) }
-    const ws = fs.createWriteStream(tmpPath)
-    data.Body.pipe(ws)
-    ws.on('finish', () => res.json({ code: 0, downloadUrl: `/proxy/download?file=${tmpName}` }))
-    ws.on('error', () => res.status(500).json({ error: '写入失败' }))
+    if (err) { console.error('getImg:', err.message); return res.status(500).end() }
+    res.setHeader('Content-Type', data.headers['content-type'] || 'image/jpeg')
+    data.Body.pipe(res)
   })
 })
 
-// 提供 /tmp 文件下载——wx.downloadFile 拉取
-app.get('/proxy/download', (req, res) => {
-  const file = req.query.file
-  if (!file || file.includes('..')) return res.status(400).end()
-  const fp = path.join('/tmp', file)
-  if (!fs.existsSync(fp)) return res.status(404).end()
-  res.sendFile(fp)
+app.get('/api/getVideo', (req, res) => {
+  const key = req.query.key
+  if (!key) return res.status(400).end()
+  cosProxy.getObject({ Bucket: COS_BUCKET, Region: COS_REGION, Key: key }, (err, data) => {
+    if (err) { console.error('getVideo:', err.message); return res.status(500).end() }
+    res.setHeader('Content-Type', data.headers['content-type'] || 'video/mp4')
+    data.Body.pipe(res)
+  })
 })
 
 // 全局中间件
