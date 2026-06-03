@@ -23,7 +23,11 @@ function fetchMedia(url, endpoint) {
         const ext = key.split('.').pop() || 'jpg'
         const filePath = `${wx.env.USER_DATA_PATH}/media_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
         try {
-          wx.getFileSystemManager().writeFileSync(filePath, res.data)
+          wx.getFileSystemManager().writeFile({
+            filePath, data: res.data,
+            success: () => { IMG_CACHE[url] = filePath; resolve(filePath) },
+            fail: (e) => { console.error('wf:', e.errMsg); resolve(url) }
+          })
           IMG_CACHE[url] = filePath
           resolve(filePath)
         } catch(e) { console.error('save:', e.message); resolve(url) }
