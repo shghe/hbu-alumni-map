@@ -131,9 +131,14 @@ function getSignedUrl(key, expires = 3600) {
  */
 async function signUrls(urls, expires = 3600) {
   if (!urls || urls.length === 0) return []
+  const COS_HOSTS = [
+    `${BUCKET}.cos.${REGION}.myqcloud.com`,
+    'hbu-alumni-map-1430752917.cos.ap-beijing.myqcloud.com'  // 旧桶兼容
+  ]
   return Promise.all(urls.map(url => {
-    // 只处理自己的 COS URL，外部 URL 直接返回
-    if (!url || !url.includes(BUCKET)) return Promise.resolve(url)
+    if (!url) return Promise.resolve(url)
+    const isCos = COS_HOSTS.some(h => url.includes(h))
+    if (!isCos) return Promise.resolve(url)
     const key = url.replace(/^https?:\/\/[^/]+\//, '')
     return getSignedUrl(key, expires)
   }))
