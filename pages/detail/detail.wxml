@@ -24,7 +24,7 @@
     <view class="placeholder-subtitle">可在 data/homes.js 中补充图片路径</view>
   </view>
 
-  <view wx:if="{{home.video}}" class="video-card" bindtap="playVideo">
+  <view wx:if="{{home.hasVideo}}" class="video-card" bindtap="playVideo">
     <image wx:if="{{home.videoPoster}}" class="video-poster" src="{{home.videoPoster}}" mode="aspectFill" />
     <view wx:else class="video-placeholder-bg" />
     <view class="video-play-btn">

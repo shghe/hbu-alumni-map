@@ -49,23 +49,44 @@ Page({
 
   async renderHome(home) {
     const description = home.description || ''
-    const [photos, videoPoster, video] = await Promise.all([
-      preloadImages(home.photos || []),
-      home.videoPoster ? fetchImage(home.videoPoster) : Promise.resolve(''),
-      home.video ? fetchVideo(home.video) : Promise.resolve('')
-    ])
+    const photoKeys = home.photos || []
+    const videoPosterKey = home.videoPoster || ''
+    const videoKey = home.video || ''
     this.setData({
       home: {
         ...home,
         id: home._id || home.id,
-        photos: photos.filter(Boolean),
-        videoPoster,
-        video,
+        photos: [],
+        photoKeys,
+        videoPoster: '',
+        videoPosterKey,
+        video: '',
+        videoKey,
+        hasVideo: Boolean(videoKey),
         descriptionLines: description.split('\n')
       },
       loading: false
     })
     wx.setNavigationBarTitle({ title: home.city || '校友之家' })
+    this.loadHeroMedia(photoKeys, videoPosterKey)
+  },
+
+  async loadHeroMedia(photoKeys, videoPosterKey) {
+    try {
+      const firstPhoto = photoKeys[0] ? await fetchImage(photoKeys[0]) : ''
+      if (firstPhoto) this.setData({ 'home.photos': [firstPhoto] })
+
+      const [restPhotos, videoPoster] = await Promise.all([
+        preloadImages(photoKeys.slice(1)),
+        videoPosterKey ? fetchImage(videoPosterKey) : Promise.resolve('')
+      ])
+      this.setData({
+        'home.photos': [firstPhoto, ...restPhotos].filter(Boolean),
+        'home.videoPoster': videoPoster
+      })
+    } catch (err) {
+      console.error('load media failed:', err.errMsg || err.message || err)
+    }
   },
 
   loadReviews() {
@@ -144,9 +165,16 @@ Page({
     wx.previewImage({ current: this.data.home.photos[index], urls: this.data.home.photos })
   },
 
-  playVideo() {
-    const url = this.data.home.video
-    if (!url) return
+  async playVideo() {
+    const { video, videoKey } = this.data.home
+    let url = video
+    if (!url && videoKey) {
+      wx.showLoading({ title: '加载视频...' })
+      url = await fetchVideo(videoKey)
+      wx.hideLoading()
+      if (url) this.setData({ 'home.video': url })
+    }
+    if (!url) return wx.showToast({ title: '视频加载失败', icon: 'none' })
     wx.previewMedia({ sources: [{ url, type: 'video' }], current: 0 })
   },
 
