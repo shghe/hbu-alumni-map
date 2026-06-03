@@ -146,11 +146,20 @@ async function migrateOldUrls() {
   try {
     for (const oldPrefix of oldPrefixes) {
       for (const table of ['home_photos', 'review_photos']) {
+        // 替换桶名
         await pool.execute(`UPDATE ${table} SET url = REPLACE(url, '${oldPrefix}', '${newPrefix}') WHERE url LIKE '%${oldPrefix}%'`)
+        // 替换地域 ap-beijing → ap-shanghai
       }
       for (const col of ['video', 'video_poster']) {
         await pool.execute(`UPDATE alumni_homes SET ${col} = REPLACE(${col}, '${oldPrefix}', '${newPrefix}') WHERE ${col} LIKE '%${oldPrefix}%'`)
       }
+    }
+    // 统一替换地域
+    for (const table of ['home_photos', 'review_photos']) {
+      await pool.execute(`UPDATE ${table} SET url = REPLACE(url, 'ap-beijing', 'ap-shanghai') WHERE url LIKE '%ap-beijing%'`)
+    }
+    for (const col of ['video', 'video_poster']) {
+      await pool.execute(`UPDATE alumni_homes SET ${col} = REPLACE(${col}, 'ap-beijing', 'ap-shanghai') WHERE ${col} LIKE '%ap-beijing%'`)
     }
     console.log('URL migration done')
   } catch (e) {

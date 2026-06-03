@@ -142,9 +142,10 @@ function deleteFile(key) {
 
 async function signUrls(urls, expires = 3600) {
   if (!urls || urls.length === 0) return []
-  // 兼容所有历史 COS 桶域名
+  // 兼容所有历史 COS 桶域名和错误地域
   const COS_HOSTS = [
     `${BUCKET}.cos.${REGION}.myqcloud.com`,
+    `${BUCKET}.cos.ap-beijing.myqcloud.com`,
     'hbu-alumni-map-single-1430752917.cos.ap-beijing.myqcloud.com',
     'hbu-alumni-map-1430752917.cos.ap-beijing.myqcloud.com'
   ]
