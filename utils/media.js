@@ -58,7 +58,7 @@ function fetchMedia(url) {
           fail() { resolve(url) }
         })
       },
-      fail() { resolve(url) }
+      fail(e) { console.error('proxy-fail:', key, e.errMsg || JSON.stringify(e)); resolve(url) }
     })
   })
 }
