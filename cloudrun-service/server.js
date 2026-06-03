@@ -41,6 +41,38 @@ app.get('/api/review-sts', async (req, res) => {
 // 管理员上传凭证
 app.use('/api/upload', adminAuth, uploadRouter)
 
+// URL 迁移：旧桶 → 新桶（一次性）
+app.get('/api/migrate-urls', async (req, res) => {
+  try {
+    const { pool } = require('./utils/db')
+    const oldPrefix = 'hbu-alumni-map-1430752917'
+    const newPrefix = 'hbu-alumni-map-single-1430752917'
+    const results = {}
+
+    for (const table of ['home_photos', 'review_photos']) {
+      const [rows] = await pool.execute(`SELECT id, url FROM ${table} WHERE url LIKE '%${oldPrefix}%'`)
+      for (const row of rows) {
+        const newUrl = row.url.replace(oldPrefix, newPrefix)
+        await pool.execute(`UPDATE ${table} SET url = ? WHERE id = ?`, [newUrl, row.id])
+      }
+      results[table] = rows.length
+    }
+
+    for (const col of ['video', 'video_poster']) {
+      const [rows] = await pool.execute(`SELECT id, ${col} FROM alumni_homes WHERE ${col} LIKE '%${oldPrefix}%'`)
+      for (const row of rows) {
+        const newUrl = row[col].replace(oldPrefix, newPrefix)
+        await pool.execute(`UPDATE alumni_homes SET ${col} = ? WHERE id = ?`, [newUrl, row.id])
+      }
+      results[col] = rows.length
+    }
+
+    res.json({ ok: true, message: 'URL 迁移完成', results })
+  } catch (err) {
+    res.status(500).json({ ok: false, message: err.message })
+  }
+})
+
 // 视频迁移（一次性，每次1个）
 app.get('/api/migrate-posters', async (req, res) => {
   try {
