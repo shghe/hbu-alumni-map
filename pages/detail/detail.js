@@ -1,6 +1,7 @@
 const localHomes = require('../../data/homes')
 const { api } = require('../../utils/api')
-const { fetchSTS, uploadFile, uploadFiles } = require('../../utils/cos')
+const { uploadFile } = require('../../utils/cos')
+const { preloadImages, fetchImage, fetchVideo } = require('../../utils/media')
 
 function formatDate(date) {
   const d = new Date(date)
@@ -32,7 +33,7 @@ Page({
 
   loadHome(id) {
     api.get(`/homes/${id}`).then((res) => {
-      if (res.code === 0 && res.data) this.renderHome(res.data)
+      if (res.code === 0 && res.data) return this.renderHome(res.data)
       else throw new Error('not found')
     }).catch(() => {
       const local = localHomes.find((h) => String(h.id) === id)
@@ -46,10 +47,22 @@ Page({
     })
   },
 
-  renderHome(home) {
+  async renderHome(home) {
     const description = home.description || ''
+    const [photos, videoPoster, video] = await Promise.all([
+      preloadImages(home.photos || []),
+      home.videoPoster ? fetchImage(home.videoPoster) : Promise.resolve(''),
+      home.video ? fetchVideo(home.video) : Promise.resolve('')
+    ])
     this.setData({
-      home: { ...home, id: home._id || home.id, descriptionLines: description.split('\n') },
+      home: {
+        ...home,
+        id: home._id || home.id,
+        photos: photos.filter(Boolean),
+        videoPoster,
+        video,
+        descriptionLines: description.split('\n')
+      },
       loading: false
     })
     wx.setNavigationBarTitle({ title: home.city || '校友之家' })
@@ -58,11 +71,12 @@ Page({
   loadReviews() {
     api.get('/reviews', { homeId: this.homeId }).then(async (res) => {
       if (res.code === 0 && res.data) {
-        const reviews = res.data.map((r) => ({
+        const reviews = await Promise.all(res.data.map(async (r) => ({
           ...r,
           avatar: r.nickname ? r.nickname.slice(0, 1) : '?',
-          createTime: r.createTime || r.created_at ? formatDate(r.createTime || r.created_at) : ''
-        }))
+          createTime: r.createTime || r.created_at ? formatDate(r.createTime || r.created_at) : '',
+          photos: (await preloadImages(r.photos || [])).filter(Boolean)
+        })))
         this.setData({ reviews, reviewsLoading: false })
       } else { this.setData({ reviewsLoading: false }) }
     }).catch(() => { this.setData({ reviewsLoading: false }) })
@@ -92,11 +106,10 @@ Page({
     try {
       const photoUrls = []
       if (selectedPhotos.length > 0) {
-        const stsData = await fetchSTS(selectedPhotos.length, true)
         for (const filePath of selectedPhotos) {
           const suffix = filePath.match(/\.(\w+)$/)?.[1] || 'jpg'
           const key = `reviews/${Date.now()}_${Math.random().toString(36).slice(2)}.${suffix}`
-          const url = await uploadFile(filePath, key, stsData); photoUrls.push(url)
+          const url = await uploadFile(filePath, key); photoUrls.push(url)
         }
       }
       const res = await api.post('/reviews', { homeId: this.homeId, nickname: nickname.trim(), rating: myRating, content: reviewContent.trim(), photos: photoUrls })

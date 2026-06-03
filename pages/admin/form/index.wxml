@@ -88,7 +88,7 @@
       <text class="label">照片</text>
       <view class="photo-grid">
         <view wx:for="{{form.photos}}" wx:key="*this" class="photo-item">
-          <image src="{{item}}" mode="aspectFill" class="photo-img" />
+          <image src="{{photoPreviews[index] || ''}}" mode="aspectFill" class="photo-img" />
           <text class="photo-x" data-index="{{index}}" bindtap="removePhoto">×</text>
         </view>
         <view wx:if="{{form.photos.length < 10}}" class="photo-add" bindtap="choosePhotos">
@@ -111,7 +111,7 @@
       <text class="label">视频封面（可选）</text>
       <view class="photo-grid">
         <view wx:if="{{form.videoPoster}}" class="photo-item">
-          <image src="{{form.videoPoster}}" mode="aspectFill" class="photo-img" />
+          <image src="{{videoPosterPreview || ''}}" mode="aspectFill" class="photo-img" />
           <text class="photo-x" bindtap="removePoster">×</text>
         </view>
         <view wx:else class="photo-add" bindtap="choosePoster">

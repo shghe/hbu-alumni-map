@@ -1,99 +1,81 @@
-/**
- * COS 上传封装
- * 替换 wx.cloud.uploadFile()
- *
- * 依赖: cos-wx-sdk-v5 (需通过 npm 安装)
- *   npm install cos-wx-sdk-v5
- */
-
 const { api } = require('./api')
 
-// 延迟加载，避免未构建 npm 时启动报错
-function getCOS() {
-  try {
-    return require('cos-wx-sdk-v5')
-  } catch (e) {
-    throw new Error('COS SDK 未安装，请在微信开发者工具中执行"工具→构建 npm"')
-  }
-}
+const UPLOAD_BASE64_CHARS = 2 * 1024 * 1024 // 1.5MB raw bytes; COS multipart non-final part stays above 1MB.
 
-/**
- * 获取 COS 上传临时凭证
- */
-function fetchSTS(count = 1, isPublic = false) {
-  const path = isPublic ? '/review-sts' : '/upload/sts'
-  return api.get(path, { count })
-}
-
-/**
- * 上传单个文件到 COS
- * @param {string} filePath - 本地文件临时路径
- * @param {string} key - COS 对象键 (如 homes/123_abc.jpg)
- * @param {object} stsData - STS 临时凭证
- * @returns {Promise<string>} COS 文件 URL
- */
-function uploadFile(filePath, key, stsData) {
+function readFileBase64(filePath) {
   return new Promise((resolve, reject) => {
-    const COS = getCOS()
-    const cos = new COS({
-      getAuthorization: (_options, callback) => {
-        callback({
-          TmpSecretId: stsData.credentials.tmpSecretId,
-          TmpSecretKey: stsData.credentials.tmpSecretKey,
-          SecurityToken: stsData.credentials.sessionToken,
-          StartTime: stsData.startTime,
-          ExpiredTime: stsData.expiredTime
-        })
-      }
-    })
-
-    cos.uploadFile({
-      Bucket: stsData.bucket,
-      Region: stsData.region,
-      Key: key,
-      FilePath: filePath
-    }, (err, data) => {
-      if (err) {
-        console.error('COS upload error:', err)
-        reject(err)
-      } else {
-        // 返回带 CDN 加速的 URL
-        const url = `https://${data.Location}`
-        resolve(url)
-      }
+    wx.getFileSystemManager().readFile({
+      filePath,
+      encoding: 'base64',
+      success: res => resolve(res.data || ''),
+      fail: reject
     })
   })
 }
 
-/**
- * 批量上传文件
- * @param {Array<{filePath: string, key: string}>} files
- * @returns {Promise<string[]>} 文件 URL 数组
- */
-async function uploadFiles(files) {
-  if (files.length === 0) return []
+function normalizeEtag(etag) {
+  if (!etag) return ''
+  const value = String(etag)
+  return value.startsWith('"') ? value : `"${value}"`
+}
 
-  const stsData = await fetchSTS(files.length)
-  const urls = []
+async function uploadFile(filePath, key) {
+  const data = await readFileBase64(filePath)
+  if (!data) throw new Error('文件读取失败')
 
-  for (const { filePath, key } of files) {
-    const url = await uploadFile(filePath, key, stsData)
-    urls.push(url)
+  const init = await api.post('/media/upload/init', { key })
+  if (!init || init.code !== 0 || !init.uploadId) {
+    throw new Error((init && init.message) || '上传初始化失败')
   }
 
+  const parts = []
+  let partNumber = 1
+
+  try {
+    for (let offset = 0; offset < data.length; offset += UPLOAD_BASE64_CHARS) {
+      const chunk = data.slice(offset, offset + UPLOAD_BASE64_CHARS)
+      const res = await api.post('/media/upload/part', {
+        key,
+        uploadId: init.uploadId,
+        partNumber,
+        data: chunk
+      })
+      if (!res || res.code !== 0 || !res.etag) {
+        throw new Error((res && res.message) || '上传分片失败')
+      }
+      parts.push({ partNumber, etag: normalizeEtag(res.etag) })
+      partNumber += 1
+    }
+
+    const done = await api.post('/media/upload/complete', {
+      key,
+      uploadId: init.uploadId,
+      parts
+    })
+    if (!done || done.code !== 0 || !done.url) {
+      throw new Error((done && done.message) || '上传完成失败')
+    }
+    return done.url
+  } catch (err) {
+    api.post('/media/upload/abort', { key, uploadId: init.uploadId }).catch(() => {})
+    throw err
+  }
+}
+
+async function uploadFiles(files) {
+  const urls = []
+  for (const { filePath, key } of files) {
+    urls.push(await uploadFile(filePath, key))
+  }
   return urls
 }
 
-/**
- * 判断是否为本地临时文件（需要上传）
- */
 function isTempFile(path) {
   if (!path) return false
   return path.startsWith('http://tmp') || path.startsWith('wxfile://')
 }
 
 module.exports = {
-  fetchSTS,
   uploadFile,
   uploadFiles,
   isTempFile

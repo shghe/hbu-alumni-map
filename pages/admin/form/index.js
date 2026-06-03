@@ -3,7 +3,8 @@ const PROVINCES = CHINA_CITIES.map(p => p.province)
 const DEFAULT_PROVINCE_IDX = PROVINCES.indexOf('河北省')
 const DEFAULT_CITIES = CHINA_CITIES[DEFAULT_PROVINCE_IDX >= 0 ? DEFAULT_PROVINCE_IDX : 0].cities
 const { api } = require('../../../utils/api')
-const { fetchSTS, uploadFile, isTempFile } = require('../../../utils/cos')
+const { uploadFile, isTempFile } = require('../../../utils/cos')
+const { preloadImages, fetchImage } = require('../../../utils/media')
 
 const app = getApp()
 
@@ -38,6 +39,8 @@ Page({
       photos: []
     },
     newService: '',
+    photoPreviews: [],
+    videoPosterPreview: '',
     // Province-city dual picker
     provinces: PROVINCES,
     provinceIndex: DEFAULT_PROVINCE_IDX,
@@ -67,6 +70,8 @@ Page({
       const cityList = CHINA_CITIES[provinceIndex].cities
       const cIdx = cityList.indexOf(city)
       const cityIndex = cIdx >= 0 ? cIdx : 0
+      const photos = h.photos || []
+      const videoPoster = h.videoPoster || ''
       this.setData({
         form: {
           name: h.name || '',
@@ -82,15 +87,29 @@ Page({
           services: h.services || [],
           description: h.description || '',
           video: h.video || '',
-          videoPoster: h.videoPoster || '',
+          videoPoster,
           photos: h.photos || []
         },
         provinceIndex,
         cityList,
-        cityIndex
+        cityIndex,
+        photoPreviews: [],
+        videoPosterPreview: ''
       })
+      this.refreshMediaPreviews(photos, videoPoster)
     }).catch(() => {
       wx.showToast({ title: '加载失败', icon: 'none' })
+    })
+  },
+
+  async refreshMediaPreviews(photos, videoPoster) {
+    const [photoPreviews, videoPosterPreview] = await Promise.all([
+      preloadImages(photos || []),
+      videoPoster ? fetchImage(videoPoster) : Promise.resolve('')
+    ])
+    this.setData({
+      photoPreviews: photoPreviews.map((preview, index) => preview || (photos || [])[index]).filter(Boolean),
+      videoPosterPreview: videoPosterPreview || videoPoster || ''
     })
   },
 
@@ -166,7 +185,8 @@ Page({
       sourceType: ['album', 'camera'],
       success: (res) => {
         const photos = [...this.data.form.photos, ...res.tempFilePaths]
-        this.setData({ 'form.photos': photos })
+        const photoPreviews = [...this.data.photoPreviews, ...res.tempFilePaths]
+        this.setData({ 'form.photos': photos, photoPreviews })
       }
     })
   },
@@ -174,8 +194,10 @@ Page({
   removePhoto(event) {
     const index = Number(event.currentTarget.dataset.index)
     const photos = [...this.data.form.photos]
+    const photoPreviews = [...this.data.photoPreviews]
     photos.splice(index, 1)
-    this.setData({ 'form.photos': photos })
+    photoPreviews.splice(index, 1)
+    this.setData({ 'form.photos': photos, photoPreviews })
   },
 
   choosePoster() {
@@ -184,13 +206,13 @@ Page({
       sizeType: ['compressed'],
       sourceType: ['album', 'camera'],
       success: (res) => {
-        this.setData({ 'form.videoPoster': res.tempFilePaths[0] })
+        this.setData({ 'form.videoPoster': res.tempFilePaths[0], videoPosterPreview: res.tempFilePaths[0] })
       }
     })
   },
 
   removePoster() {
-    this.setData({ 'form.videoPoster': '' })
+    this.setData({ 'form.videoPoster': '', videoPosterPreview: '' })
   },
 
   chooseVideo() {
@@ -252,25 +274,13 @@ Page({
     })
 
     try {
-      // 统计需要上传的新文件数
-      let uploadCount = 0
-      for (const photo of form.photos) { if (isTempFile(photo)) uploadCount++ }
-      if (isTempFile(form.videoPoster)) uploadCount++
-      if (isTempFile(form.video)) uploadCount++
-
-      // 获取 COS 上传凭证
-      let stsData = null
-      if (uploadCount > 0) {
-        stsData = await fetchSTS(uploadCount)
-      }
-
       // 上传新照片到 COS
       const photos = []
       for (const photo of form.photos) {
         if (isTempFile(photo)) {
           const suffix = photo.match(/\.(\w+)$/)?.[1] || 'jpg'
           const key = `homes/${Date.now()}_${Math.random().toString(36).slice(2)}.${suffix}`
-          const url = await uploadFile(photo, key, stsData)
+          const url = await uploadFile(photo, key)
           photos.push(url)
         } else {
           photos.push(photo)
@@ -282,7 +292,7 @@ Page({
       if (isTempFile(videoPoster)) {
         const suffix = videoPoster.match(/\.(\w+)$/)?.[1] || 'jpg'
         const key = `homes/poster_${Date.now()}.${suffix}`
-        videoPoster = await uploadFile(videoPoster, key, stsData)
+        videoPoster = await uploadFile(videoPoster, key)
       }
 
       // 上传视频
@@ -290,7 +300,7 @@ Page({
       if (isTempFile(video)) {
         const suffix = video.match(/\.(\w+)$/)?.[1] || 'mp4'
         const key = `homes/video_${Date.now()}.${suffix}`
-        video = await uploadFile(video, key, stsData)
+        video = await uploadFile(video, key)
       }
 
       const data = {

@@ -6,6 +6,7 @@ const homesRouter = require('./routes/homes')
 const reviewsRouter = require('./routes/reviews')
 const adminRouter = require('./routes/admin')
 const authRouter = require('./routes/auth')
+const mediaRouter = require('./routes/media')
 const { initDB } = require('./utils/db')
 const { adminAuth } = require('./middleware/auth')
 
@@ -18,15 +19,12 @@ app.use((req, res, next) => { console.log(`${new Date().toISOString()} ${req.met
 app.use('/api/homes', homesRouter)
 app.use('/api/reviews', reviewsRouter)
 app.use('/api/auth', authRouter)
+app.use('/api/media', mediaRouter)
 app.use('/api/admin', adminAuth, adminRouter)
 app.use('/api/upload', adminAuth, require('./routes/upload'))
 
 app.get('/api/review-sts', async (req, res) => {
-  try {
-    const count = Math.min(parseInt(req.query.count, 10) || 1, 6)
-    const { getSTSCredentials } = require('./utils/cos')
-    res.json({ code: 0, ...(await getSTSCredentials(count)) })
-  } catch (err) { res.status(500).json({ code: 500, message: err.message }) }
+  res.status(410).json({ code: 410, message: 'STS 已禁用，请使用 /api/media/upload/* 内网中转上传' })
 })
 
 app.get('/api/health', (req, res) => res.json({ ok: true, time: new Date().toISOString() }))
