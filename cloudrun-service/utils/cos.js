@@ -151,6 +151,5 @@ function signUrls(urls) {
     } catch { return url }
   }))
 }
-}
 
 module.exports = { BUCKET, REGION, getSTSCredentials, getSignedUrl, signUrls, deleteFile }
