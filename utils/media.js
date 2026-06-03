@@ -15,28 +15,24 @@ function fetchMedia(url, endpoint) {
     const key = getKeyFromUrl(url)
     if (!key) return resolve('')
 
+    // 先测试 /api/ping 小图片验证链路
+    const testPath = '/api/ping'
+
     wx.cloud.callContainer({
       config: { env: ENV },
-      path: `${endpoint}?key=${encodeURIComponent(key)}`,
+      path: testPath,
       method: 'GET',
       success(res) {
         try {
-          // callContainer 返回格式可能是 { data: { code:0, data:"..." } }
-          // 也可能是 { code:0, data:"..." } 直接在顶层
-          let b64 = null
-          if (res.data && typeof res.data === 'object') b64 = res.data.data
-          if (!b64 && typeof res.data === 'string') b64 = JSON.parse(res.data).data
-          if (!b64) b64 = res.data  // 直接是base64字符串？
-          if (!b64 || typeof b64 !== 'string' || b64.length < 10) {
-            console.error('invalid response format', typeof res.data, JSON.stringify(res.data).substring(0, 100))
-            return resolve('')
-          }
+          console.log('ping res:', JSON.stringify(res.data).substring(0, 200))
+          const b64 = (res.data && res.data.data) ? res.data.data : ''
+          if (!b64 || b64.length < 10) { console.error('no data'); return resolve('') }
           const ext = key.split('.').pop() || 'jpg'
-          const fp = `${wx.env.USER_DATA_PATH}/cos_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+          const fp = `${wx.env.USER_DATA_PATH}/test_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
           wx.getFileSystemManager().writeFile({
             filePath: fp, data: b64, encoding: 'base64',
             success: () => { IMG_CACHE[url] = fp; resolve(fp) },
-            fail: (e) => { console.error('wf fail:', e.errMsg); resolve('') }
+            fail: (e) => { console.error('wf:', e.errMsg); resolve('') }
           })
         } catch(e) { console.error('ex:', e.message); resolve('') }
       },
