@@ -1,7 +1,7 @@
 const localHomes = require('../../data/homes')
 const { api } = require('../../utils/api')
 const { fetchSTS, uploadFile, uploadFiles } = require('../../utils/cos')
-const { preloadImages } = require('../../utils/media')
+const { preloadImages, fetchVideo } = require('../../utils/media')
 
 function formatDate(date) {
   const d = new Date(date)
@@ -60,11 +60,13 @@ Page({
     const description = home.description || ''
     const photos = home.photos || []
     const poster = home.videoPoster || ''
+    const video = home.video || ''
 
-    // 内网预加载所有图片
-    const [loadedPhotos, loadedPoster] = await Promise.all([
+    // 内网预加载所有图片和视频
+    const [loadedPhotos, loadedPoster, loadedVideo] = await Promise.all([
       preloadImages(photos),
-      poster ? preloadImages([poster]).then(r => r[0]) : Promise.resolve('')
+      poster ? preloadImages([poster]).then(r => r[0]) : Promise.resolve(''),
+      video ? fetchVideo(video) : Promise.resolve('')
     ])
 
     this.setData({
@@ -73,7 +75,8 @@ Page({
         id: home._id || home.id,
         descriptionLines: description.split('\n'),
         photos: loadedPhotos,
-        videoPoster: loadedPoster
+        videoPoster: loadedPoster,
+        video: loadedVideo
       },
       loading: false
     })
