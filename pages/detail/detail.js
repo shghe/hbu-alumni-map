@@ -75,6 +75,7 @@ Page({
     const firstPhotoPromise = photoKeys[0] ? fetchImage(photoKeys[0]) : Promise.resolve('')
     firstPhotoPromise.then((firstPhoto) => {
       if (firstPhoto) this.setData({ 'home.photos': [firstPhoto] })
+      this.prefetchVideo()
     })
 
     if (videoPosterKey) {
@@ -89,7 +90,6 @@ Page({
       this.setData({
         'home.photos': [firstPhoto, ...restPhotos].filter(Boolean)
       })
-      this.prefetchVideo()
     } catch (err) {
       console.error('load media failed:', err.errMsg || err.message || err)
     }

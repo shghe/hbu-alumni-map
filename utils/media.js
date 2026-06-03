@@ -3,7 +3,7 @@ const PENDING_CACHE = {}
 const ENV = 'prod-d2gq9dsgy570dcb29'
 const SERVICE = 'alumni-api'
 const IMAGE_CHUNK = 393216 // 384KB; divisible by 3, so base64 chunks can be concatenated safely.
-const VIDEO_CHUNK = 614400 // 600KB; still below the 1MB-ish callContainer JSON response ceiling.
+const VIDEO_CHUNK = 688128 // 672KB; keeps base64 JSON below the 1MB-ish callContainer response ceiling.
 const CACHE_KEY = 'media_file_cache_v1'
 
 function isLocalFile(url) {
