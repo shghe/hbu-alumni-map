@@ -22,7 +22,7 @@ function fetchInternal(path) {
 
 function fetchMedia(url) {
   return new Promise((resolve) => {
-    if (!url) return resolve('')
+    if (!url) return resolve(url)
     if (IMG_CACHE[url]) return resolve(IMG_CACHE[url])
 
     const key = getKeyFromUrl(url)
@@ -68,7 +68,7 @@ function fetchVideo(url) { return fetchMedia(url) }
 
 async function preloadImages(urls) {
   if (!urls || urls.length === 0) return urls
-  return Promise.all(urls.map(url => url ? fetchImage(url) : Promise.resolve('')))
+  return Promise.all(urls.map(url => url ? fetchImage(url) : Promise.resolve(url)))
 }
 
 module.exports = { fetchImage, fetchVideo, preloadImages, getKeyFromUrl }
