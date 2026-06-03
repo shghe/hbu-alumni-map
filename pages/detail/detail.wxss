@@ -33,19 +33,6 @@
   background: #1a2b25;
 }
 
-.video-cover {
-  width: 100%;
-  height: 100%;
-}
-
-.fullscreen-video {
-  position: fixed;
-  left: -9999rpx;
-  top: -9999rpx;
-  width: 2rpx;
-  height: 2rpx;
-}
-
 .video-poster {
   width: 100%;
   height: 100%;

@@ -24,29 +24,14 @@
     <view class="placeholder-subtitle">可在 data/homes.js 中补充图片路径</view>
   </view>
 
-  <view wx:if="{{home.hasVideo}}" class="video-card">
-    <view class="video-cover" bindtap="playVideo">
-      <image wx:if="{{home.videoPoster}}" class="video-poster" src="{{home.videoPoster}}" mode="aspectFill" />
-      <view wx:else class="video-placeholder-bg" />
-      <view class="video-play-btn">
-        <text class="video-play-icon">▶</text>
-        <text class="video-play-label">播放视频介绍</text>
-      </view>
+  <view wx:if="{{home.hasVideo}}" class="video-card" bindtap="playVideo">
+    <image wx:if="{{home.videoPoster}}" class="video-poster" src="{{home.videoPoster}}" mode="aspectFill" />
+    <view wx:else class="video-placeholder-bg" />
+    <view class="video-play-btn">
+      <text class="video-play-icon">▶</text>
+      <text class="video-play-label">播放视频介绍</text>
     </view>
   </view>
-
-  <video
-    wx:if="{{home.videoPlayerActive && home.video}}"
-    id="homeVideo"
-    class="fullscreen-video"
-    src="{{home.video}}"
-    controls
-    autoplay
-    object-fit="contain"
-    show-center-play-btn
-    enable-progress-gesture
-    bindfullscreenchange="onVideoFullscreenChange"
-  />
 
   <view class="content">
     <view class="city">{{home.city}}</view>
