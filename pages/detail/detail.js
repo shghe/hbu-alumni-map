@@ -56,13 +56,24 @@ Page({
     })
   },
 
-  renderHome(home) {
+  async renderHome(home) {
     const description = home.description || ''
+    const photos = home.photos || []
+    const poster = home.videoPoster || ''
+
+    // 内网预加载所有图片
+    const [loadedPhotos, loadedPoster] = await Promise.all([
+      preloadImages(photos),
+      poster ? preloadImages([poster]).then(r => r[0]) : Promise.resolve('')
+    ])
+
     this.setData({
       home: {
         ...home,
         id: home._id || home.id,
-        descriptionLines: description.split('\n')
+        descriptionLines: description.split('\n'),
+        photos: loadedPhotos,
+        videoPoster: loadedPoster
       },
       loading: false
     })
@@ -70,13 +81,19 @@ Page({
   },
 
   loadReviews() {
-    api.get('/reviews', { homeId: this.homeId }).then((res) => {
+    api.get('/reviews', { homeId: this.homeId }).then(async (res) => {
       if (res.code === 0 && res.data) {
-        const reviews = res.data.map((r) => ({
-          ...r,
-          avatar: r.nickname ? r.nickname.slice(0, 1) : '?',
-          createTime: r.createTime || r.created_at ? formatDate(r.createTime || r.created_at) : ''
-        }))
+        const reviews = []
+        for (const r of res.data) {
+          const photos = r.photos || []
+          const loadedPhotos = await preloadImages(photos)
+          reviews.push({
+            ...r,
+            avatar: r.nickname ? r.nickname.slice(0, 1) : '?',
+            createTime: r.createTime || r.created_at ? formatDate(r.createTime || r.created_at) : '',
+            photos: loadedPhotos
+          })
+        }
         this.setData({ reviews, reviewsLoading: false })
       } else {
         this.setData({ reviewsLoading: false })
