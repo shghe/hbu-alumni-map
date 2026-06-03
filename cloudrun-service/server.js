@@ -39,6 +39,15 @@ app.get('/api/review-sts', async (req, res) => {
 })
 
 app.get('/api/health', (req, res) => res.json({ ok: true }))
+
+// 内网诊断
+app.get('/api/diag', async (req, res) => {
+  const dns = require('dns')
+  const host = `${BUCKET}.cos.${REGION}.myqcloud.com`
+  dns.resolve4(host, (err, addrs) => {
+    res.json({ host, ips: addrs || [], internal: addrs ? addrs.some(ip => ip.startsWith('10.') || ip.startsWith('100.') || ip.startsWith('172.')) : false, err: err ? err.message : null })
+  })
+})
 app.use((err, req, res, next) => { console.error(err); res.status(500).json({ code: 500, message: '服务器错误' }) })
 
 // 启动
