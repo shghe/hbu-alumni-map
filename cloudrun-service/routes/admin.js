@@ -2,6 +2,7 @@ const express = require('express')
 const router = express.Router()
 const { pool } = require('../utils/db')
 const { validateHomeData } = require('../utils/validator')
+const { signUrls } = require('../utils/cos')
 
 // ---------- 辅助函数：写操作日志 ----------
 async function logAction(openid, adminName, action, detail) {
@@ -135,6 +136,7 @@ router.get('/reviews', async (req, res) => {
     const result = []
     for (const r of reviews) {
       const [photos] = await pool.execute('SELECT url FROM review_photos WHERE review_id = ?', [r.id])
+      const signedPhotos = await signUrls(photos.map(p => p.url))
       result.push({
         ...r,
         _id: String(r.id),
@@ -142,7 +144,7 @@ router.get('/reviews', async (req, res) => {
         home_id: undefined,
         homeName: r.home_name || '已删除',
         home_name: undefined,
-        photos: photos.map(p => p.url),
+        photos: signedPhotos,
         createTime: r.created_at
       })
     }

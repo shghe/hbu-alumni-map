@@ -1,6 +1,7 @@
 const express = require('express')
 const router = express.Router()
 const { pool } = require('../utils/db')
+const { signUrls } = require('../utils/cos')
 const { validateReviewData } = require('../utils/validator')
 
 // GET /api/reviews?homeId=xxx — 某个校友之家的评价
@@ -16,19 +17,20 @@ router.get('/', async (req, res) => {
       'SELECT * FROM reviews WHERE home_id = ? ORDER BY created_at DESC', [homeIdNum]
     )
 
-    // 填充照片
     const result = []
     for (const r of reviews) {
       const [photos] = await pool.execute(
         'SELECT url FROM review_photos WHERE review_id = ?', [r.id]
       )
+      const photoUrls = photos.map(p => p.url)
+      const signedPhotos = await signUrls(photoUrls)
       result.push({
         ...r,
         _id: String(r.id),
         homeId: String(r.home_id),
         home_id: undefined,
         avatar: r.nickname ? r.nickname.slice(0, 1) : '?',
-        photos: photos.map(p => p.url)
+        photos: signedPhotos
       })
     }
 
@@ -48,18 +50,15 @@ router.post('/', async (req, res) => {
 
     const homeId = parseInt(data.homeId, 10)
 
-    // 验证校友之家存在
     const [[home]] = await pool.execute('SELECT id FROM alumni_homes WHERE id = ?', [homeId])
     if (!home) return res.status(400).json({ code: 400, message: '校友之家不存在' })
 
-    // 插入评价
     const [result] = await pool.execute(
       'INSERT INTO reviews (home_id, nickname, rating, content) VALUES (?, ?, ?, ?)',
       [homeId, data.nickname.trim(), data.rating, data.content.trim()]
     )
     const reviewId = result.insertId
 
-    // 插入照片
     if (data.photos && data.photos.length > 0) {
       const values = data.photos.map(url => [reviewId, url])
       await pool.query('INSERT INTO review_photos (review_id, url) VALUES ?', [values])

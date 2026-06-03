@@ -99,4 +99,44 @@ function getSTSCredentials(count = 1) {
   })
 }
 
-module.exports = { BUCKET, REGION, getSTSCredentials }
+const COS = require('cos-nodejs-sdk-v5')
+const cos = new COS({ SecretId: SECRET_ID, SecretKey: SECRET_KEY })
+
+/**
+ * 生成 COS 对象的预签名 URL（私有读）
+ * @param {string} key - 对象键 (如 homes/xxx.jpg)
+ * @param {number} expires - 有效期秒数，默认 3600 (1小时)
+ * @returns {string} 带签名的完整 URL
+ */
+function getSignedUrl(key, expires = 3600) {
+  return new Promise((resolve, reject) => {
+    cos.getObjectUrl({
+      Bucket: BUCKET,
+      Region: REGION,
+      Key: key,
+      Expires: expires,
+      Sign: true
+    }, (err, data) => {
+      if (err) reject(err)
+      else resolve(data.Url)
+    })
+  })
+}
+
+/**
+ * 将 COS URL 列表转为预签名 URL
+ * @param {string[]} urls - COS 完整 URL 列表
+ * @param {number} expires - 有效期秒数
+ * @returns {Promise<string[]>} 预签名 URL 列表
+ */
+async function signUrls(urls, expires = 3600) {
+  if (!urls || urls.length === 0) return []
+  return Promise.all(urls.map(url => {
+    // 只处理自己的 COS URL，外部 URL 直接返回
+    if (!url || !url.includes(BUCKET)) return Promise.resolve(url)
+    const key = url.replace(/^https?:\/\/[^/]+\//, '')
+    return getSignedUrl(key, expires)
+  }))
+}
+
+module.exports = { BUCKET, REGION, getSTSCredentials, getSignedUrl, signUrls }

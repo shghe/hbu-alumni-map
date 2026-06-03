@@ -1,6 +1,7 @@
 const express = require('express')
 const router = express.Router()
 const { pool } = require('../utils/db')
+const { signUrls } = require('../utils/cos')
 
 // GET /api/homes — 所有校友之家列表
 router.get('/', async (req, res) => {
@@ -9,27 +10,28 @@ router.get('/', async (req, res) => {
       'SELECT * FROM alumni_homes ORDER BY id'
     )
 
-    // 为每个 home 填充 photos, services 数组
     const result = []
     for (const home of homes) {
-      const [[{ cnt: photoCount }]] = await pool.execute(
-        'SELECT COUNT(*) as cnt FROM home_photos WHERE home_id = ?', [home.id]
+      const [photos] = await pool.execute(
+        'SELECT url FROM home_photos WHERE home_id = ? ORDER BY sort', [home.id]
       )
-      const [photos] = photoCount > 0
-        ? await pool.execute('SELECT url FROM home_photos WHERE home_id = ? ORDER BY sort', [home.id])
-        : [[{ url: null }]]
-
       const [services] = await pool.execute(
         'SELECT service FROM home_services WHERE home_id = ?', [home.id]
       )
+
+      const photoUrls = photos.filter(p => p.url).map(p => p.url)
+      const signedPhotos = await signUrls(photoUrls)
+      const signedVideo = home.video ? (await signUrls([home.video]))[0] : ''
+      const signedPoster = home.video_poster ? (await signUrls([home.video_poster]))[0] : ''
 
       result.push({
         ...home,
         _id: String(home.id),
         dbId: String(home.id),
         contactName: home.contact_name,
-        videoPoster: home.video_poster,
-        photos: photos.filter(p => p.url).map(p => p.url),
+        video: signedVideo,
+        videoPoster: signedPoster,
+        photos: signedPhotos,
         services: services.map(s => s.service)
       })
     }
@@ -59,6 +61,11 @@ router.get('/:id', async (req, res) => {
       'SELECT service FROM home_services WHERE home_id = ?', [id]
     )
 
+    const photoUrls = photos.map(p => p.url)
+    const signedPhotos = await signUrls(photoUrls)
+    const signedVideo = home.video ? (await signUrls([home.video]))[0] : ''
+    const signedPoster = home.video_poster ? (await signUrls([home.video_poster]))[0] : ''
+
     res.json({
       code: 0,
       data: {
@@ -66,8 +73,9 @@ router.get('/:id', async (req, res) => {
         _id: String(home.id),
         id: String(home.id),
         contactName: home.contact_name,
-        videoPoster: home.video_poster,
-        photos: photos.map(p => p.url),
+        video: signedVideo,
+        videoPoster: signedPoster,
+        photos: signedPhotos,
         services: services.map(s => s.service)
       }
     })
