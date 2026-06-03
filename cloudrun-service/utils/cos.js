@@ -140,21 +140,15 @@ function deleteFile(key) {
   })
 }
 
-async function signUrls(urls, expires = 3600) {
-  if (!urls || urls.length === 0) return []
-  // 兼容所有历史 COS 桶域名和错误地域
-  const COS_HOSTS = [
-    `${BUCKET}.cos.${REGION}.myqcloud.com`,
-    `${BUCKET}.cos.ap-beijing.myqcloud.com`,
-    'hbu-alumni-map-single-1430752917.cos.ap-beijing.myqcloud.com',
-    'hbu-alumni-map-1430752917.cos.ap-beijing.myqcloud.com'
-  ]
-  return Promise.all(urls.map(url => {
-    if (!url) return Promise.resolve(url)
-    const isCos = COS_HOSTS.some(h => url.includes(h))
-    if (!isCos) return Promise.resolve(url)
-    const key = url.replace(/^https?:\/\/[^/]+\//, '')
-    return getSignedUrl(key, expires)
+function signUrls(urls) {
+  // 不生成预签名 URL——前端通过内网代理拉取，零外网
+  if (!urls || urls.length === 0) return Promise.resolve([])
+  return Promise.resolve(urls.map(url => {
+    if (!url) return ''
+    try {
+      const key = url.replace(/^https?:\/\/[^/]+\//, '')
+      return `https://${BUCKET}.cos.${REGION}.myqcloud.com/${key}`
+    } catch { return url }
   }))
 }
 

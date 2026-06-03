@@ -13,7 +13,7 @@ function fetchMedia(url, endpoint) {
     if (IMG_CACHE[url]) return resolve(IMG_CACHE[url])
 
     const key = getKeyFromUrl(url)
-    if (!key) return resolve(url)
+    if (!key) return resolve('')
 
     wx.cloud.callContainer({
       config: { env: ENV },
@@ -21,16 +21,16 @@ function fetchMedia(url, endpoint) {
       method: 'GET',
       dataType: 'arraybuffer',
       success(res) {
-        if (!res.data || !res.data.byteLength) return resolve(url)
+        if (!res.data || !res.data.byteLength) return resolve('')
         const ext = key.split('.').pop() || 'jpg'
         const fp = `${wx.env.USER_DATA_PATH}/cos_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
         wx.getFileSystemManager().writeFile({
           filePath: fp, data: res.data,
           success: () => { IMG_CACHE[url] = fp; resolve(fp) },
-          fail: () => resolve(url)
+          fail: () => resolve('')
         })
       },
-      fail() { resolve(url) }
+      fail() { resolve('') }
     })
   })
 }
