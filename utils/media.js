@@ -20,17 +20,23 @@ function fetchMedia(url, endpoint) {
       method: 'GET',
       dataType: 'arraybuffer',
       success(res) {
-        const ext = key.split('.').pop() || 'jpg'
-        const filePath = `${wx.env.USER_DATA_PATH}/media_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
         try {
-          wx.getFileSystemManager().writeFile({
-            filePath, data: res.data,
-            success: () => { IMG_CACHE[url] = filePath; resolve(filePath) },
-            fail: (e) => { console.error('wf:', e.errMsg); resolve(url) }
-          })
-        } catch(e) { console.error('save:', e.message); resolve(url) }
+          // 转 base64 data URI，无需写临时文件
+          const base64 = wx.arrayBufferToBase64(res.data)
+          const ext = key.split('.').pop() || 'jpg'
+          const mime = ext === 'png' ? 'image/png' : ext === 'mp4' ? 'video/mp4' : 'image/jpeg'
+          const dataUri = `data:${mime};base64,${base64}`
+          IMG_CACHE[url] = dataUri
+          resolve(dataUri)
+        } catch(e) {
+          console.error('convert:', e.message)
+          resolve(url)
+        }
       },
-      fail(e) { console.error('fetch:', JSON.stringify(e)); resolve(url) }
+      fail(e) {
+        console.error('fetch:', e.errMsg || JSON.stringify(e))
+        resolve(url)
+      }
     })
   })
 }
