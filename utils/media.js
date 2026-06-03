@@ -28,8 +28,6 @@ function fetchMedia(url, endpoint) {
             success: () => { IMG_CACHE[url] = filePath; resolve(filePath) },
             fail: (e) => { console.error('wf:', e.errMsg); resolve(url) }
           })
-          IMG_CACHE[url] = filePath
-          resolve(filePath)
         } catch(e) { console.error('save:', e.message); resolve(url) }
       },
       fail(e) { console.error('fetch:', JSON.stringify(e)); resolve(url) }
