@@ -14,6 +14,13 @@ const app = express()
 const PORT = process.env.PORT || 80
 
 app.use(express.json({ limit: '10mb' }))
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Range, X-WX-SERVICE')
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,HEAD,OPTIONS')
+  if (req.method === 'OPTIONS') return res.status(204).end()
+  next()
+})
 app.use((req, res, next) => { console.log(`${new Date().toISOString()} ${req.method} ${req.path}`); next() })
 
 app.use('/api/homes', homesRouter)
@@ -33,16 +40,7 @@ app.use((err, req, res, next) => { console.error(err); res.status(500).json({ co
 async function run() {
   try {
     await initDB()
-    const { pool } = require('./utils/db')
-    const B = process.env.COS_BUCKET || 'hbu-alumni-map-single-shanghai-1430752917'
-    for (const op of ['hbu-alumni-map-1430752917', 'hbu-alumni-map-single-1430752917']) {
-      for (const t of ['home_photos', 'review_photos']) await pool.execute(`UPDATE ${t} SET url = REPLACE(url, ?, ?) WHERE url LIKE ?`, [op, B, `%${op}%`])
-      for (const c of ['video', 'video_poster']) await pool.execute(`UPDATE alumni_homes SET ${c} = REPLACE(${c}, ?, ?) WHERE ${c} LIKE ?`, [op, B, `%${op}%`])
-    }
-    for (const t of ['home_photos', 'review_photos']) await pool.execute(`UPDATE ${t} SET url = REPLACE(url, 'ap-beijing', 'ap-shanghai') WHERE url LIKE '%ap-beijing%'`)
-    for (const c of ['video', 'video_poster']) await pool.execute(`UPDATE alumni_homes SET ${c} = REPLACE(${c}, 'ap-beijing', 'ap-shanghai') WHERE ${c} LIKE '%ap-beijing%'`)
-    console.log('URL migration done')
-  } catch (e) { console.log('Migration skipped:', e.message) }
+  } catch (e) { console.log('Database init skipped:', e.message) }
   app.listen(PORT, () => console.log(`API:${PORT}`))
 }
 run()

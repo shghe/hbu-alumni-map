@@ -50,7 +50,7 @@ Page({
   },
 
   tryAutoLogin() {
-    api.get('/auth/check').then((res) => {
+    const handleAuth = (res) => {
       if (res.code === 0 && res.isAdmin) {
         getApp().globalData.adminToken = res.token
         this.setData({ authenticated: true })
@@ -58,7 +58,17 @@ Page({
       } else if (res.code === 0 && res.openid) {
         this.setData({ myOpenid: res.openid })
       }
-    }).catch(() => {})
+    }
+
+    wx.login({
+      success: ({ code }) => {
+        if (!code) return
+        api.post('/auth/wechat-login', { code }).then(handleAuth).catch(() => {
+          api.get('/auth/check').then(handleAuth).catch(() => {})
+        })
+      },
+      fail: () => api.get('/auth/check').then(handleAuth).catch(() => {})
+    })
   },
 
   copyOpenid() {

@@ -1,13 +1,12 @@
 const crypto = require('crypto')
 const dns = require('dns')
 const express = require('express')
-const COS = require('cos-nodejs-sdk-v5')
 const { pool } = require('../utils/db')
+const { BUCKET, REGION, cos, normalizeKey, verifyMediaSignature } = require('../utils/cos')
+const jwt = require('jsonwebtoken')
+const { JWT_SECRET } = require('../middleware/auth')
 
 const router = express.Router()
-const BUCKET = process.env.COS_BUCKET || 'hbu-alumni-map-single-shanghai-1430752917'
-const REGION = process.env.COS_REGION || 'ap-shanghai'
-const cos = new COS({ SecretId: process.env.COS_SECRET_ID, SecretKey: process.env.COS_SECRET_KEY })
 
 const DOWNLOAD_CHUNK_MAX = 786432
 const UPLOAD_PART_MAX_BASE64 = 3 * 1024 * 1024
@@ -21,21 +20,15 @@ function cosCall(method, params) {
   })
 }
 
-function normalizeKey(value) {
-  if (!value || typeof value !== 'string') return ''
-  let key = value.trim()
-  try {
-    const parsed = new URL(key)
-    key = parsed.pathname.slice(1)
-  } catch {}
-  try { key = decodeURIComponent(key) } catch {}
-  key = key.split('?')[0].replace(/^\/+/, '')
-  if (!/^(homes|reviews)\//.test(key)) return ''
-  if (key.includes('..') || key.includes('\\')) return ''
-  return key
-}
-
 async function isAdmin(req) {
+  const authHeader = req.headers.authorization || ''
+  if (authHeader.startsWith('Bearer ')) {
+    try {
+      const payload = jwt.verify(authHeader.slice(7), JWT_SECRET)
+      if (payload.role === 'admin') return true
+    } catch {}
+  }
+
   const openid = req.headers['x-wx-openid']
   if (!openid) return false
   try {
@@ -94,6 +87,39 @@ async function downloadChunk(req, res, fallbackMime) {
 
 router.get('/getImg', (req, res) => downloadChunk(req, res, 'image/jpeg'))
 router.get('/getVideo', (req, res) => downloadChunk(req, res, 'video/mp4'))
+
+async function streamObject(req, res) {
+  try {
+    const key = normalizeKey(req.query.key)
+    if (!key) return res.status(400).json({ code: 400, message: 'invalid key' })
+    if (!verifyMediaSignature(key, req.query.e, req.query.s)) return res.status(403).json({ code: 403, message: 'invalid signature' })
+
+    const params = { Bucket: BUCKET, Region: REGION, Key: key }
+    if (req.headers.range) params.Range = req.headers.range
+    const data = await cosCall('getObject', params)
+    const headers = data.headers || {}
+    const body = Buffer.isBuffer(data.Body) ? data.Body : Buffer.from(data.Body || '')
+    const status = headers['content-range'] ? 206 : 200
+
+    res.status(status)
+    res.setHeader('Accept-Ranges', 'bytes')
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
+    res.setHeader('Content-Type', headers['content-type'] || 'application/octet-stream')
+    res.setHeader('Content-Length', body.length)
+    if (headers.etag) res.setHeader('ETag', headers.etag)
+    if (headers['last-modified']) res.setHeader('Last-Modified', headers['last-modified'])
+    if (headers['content-range']) res.setHeader('Content-Range', headers['content-range'])
+    if (req.method === 'HEAD') return res.end()
+    return res.end(body)
+  } catch (e) {
+    console.error('media stream error:', e)
+    const status = e.statusCode === 404 || e.code === 'NoSuchKey' ? 404 : 500
+    return res.status(status).json({ code: status, message: e.message || 'stream failed' })
+  }
+}
+
+router.get('/stream', streamObject)
+router.head('/stream', streamObject)
 
 router.post('/upload/init', async (req, res) => {
   try {
@@ -169,7 +195,7 @@ router.post('/upload/abort', async (req, res) => {
 })
 
 router.get('/diag', async (req, res) => {
-  const host = `${BUCKET}.cos.${REGION}.myqcloud.com`
+  const host = process.env.COS_DOMAIN || process.env.COS_INTERNAL_DOMAIN || `${BUCKET}.cos.${REGION}.myqcloud.com`
   dns.lookup(host, { all: true }, async (err, records) => {
     const ips = err ? [] : records.map(r => r.address)
     let headOk = false

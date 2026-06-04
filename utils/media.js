@@ -1,13 +1,30 @@
 const IMG_CACHE = {}
 const PENDING_CACHE = {}
-const ENV = 'prod-d2gq9dsgy570dcb29'
-const SERVICE = 'alumni-api'
+const { API_BASE_URL, CLOUD_ENV, CLOUD_SERVICE } = require('./config')
 const IMAGE_CHUNK = 393216 // 384KB; divisible by 3, so base64 chunks can be concatenated safely.
 const VIDEO_CHUNK = 688128 // 672KB; keeps base64 JSON below the 1MB-ish callContainer response ceiling.
 const CACHE_KEY = 'media_file_cache_v1'
 
 function isLocalFile(url) {
-  return /^wxfile:\/\//.test(url) || /^http:\/\/tmp\//.test(url) || /^\/assets\//.test(url)
+  return /^wxfile:\/\//.test(url) || /^http:\/\/tmp\//.test(url) || /^http:\/\/usr\//.test(url) || /^\/assets\//.test(url)
+}
+
+function isHttpUrl(url) {
+  return /^https?:\/\//.test(url)
+}
+
+function isCosHost(hostname) {
+  return /\.cos\.[^.]+\.myqcloud\.com$/.test(hostname) || hostname.includes('.cos-internal.')
+}
+
+function isProxyUrl(url) {
+  if (!isHttpUrl(url)) return false
+  try {
+    const parsed = new URL(url)
+    return !isCosHost(parsed.hostname)
+  } catch (e) {
+    return false
+  }
 }
 
 function getKeyFromUrl(url) {
@@ -16,7 +33,7 @@ function getKeyFromUrl(url) {
 
   try {
     const parsed = new URL(url)
-    if (!/\.cos\.[^.]+\.myqcloud\.com$/.test(parsed.hostname) && !parsed.hostname.includes('.cos-internal.')) {
+    if (!isCosHost(parsed.hostname)) {
       return ''
     }
     let key = parsed.pathname.slice(1)
@@ -25,6 +42,11 @@ function getKeyFromUrl(url) {
   } catch (e) {
     return ''
   }
+}
+
+function streamUrlForKey(key) {
+  if (!API_BASE_URL || !key) return ''
+  return `${API_BASE_URL.replace(/\/+$/, '')}/api/media/stream?key=${encodeURIComponent(key)}`
 }
 
 function localPathForKey(key) {
@@ -65,10 +87,10 @@ async function getCachedFile(key) {
 function callMedia(path) {
   return new Promise((resolve, reject) => {
     wx.cloud.callContainer({
-      config: { env: ENV, service: SERVICE },
+      config: { env: CLOUD_ENV, service: CLOUD_SERVICE },
       path,
       method: 'GET',
-      header: { 'X-WX-SERVICE': SERVICE },
+      header: { 'X-WX-SERVICE': CLOUD_SERVICE },
       timeout: 60000,
       success: (res) => resolve(res.data),
       fail: reject
@@ -106,10 +128,14 @@ async function fetchChunked(key, endpoint, chunkSize) {
 function fetchMedia(url, endpoint, chunkSize) {
   return new Promise((resolve) => {
     if (!url) return resolve('')
+    if (isProxyUrl(url)) return resolve(url)
     if (IMG_CACHE[url]) return resolve(IMG_CACHE[url])
 
     const key = getKeyFromUrl(url)
     if (!key) return resolve(url)
+    const streamUrl = streamUrlForKey(key)
+    if (streamUrl) return resolve(streamUrl)
+
     const pendingKey = `${endpoint}:${key}`
     if (PENDING_CACHE[pendingKey]) {
       PENDING_CACHE[pendingKey].then(resolve).catch(() => resolve(''))
