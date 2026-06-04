@@ -7,7 +7,7 @@ const BUCKET = process.env.COS_BUCKET || 'hbu-alumni-map-single-1430752917'
 const REGION = process.env.COS_REGION || 'ap-beijing'
 const PUBLIC_BASE_URL = process.env.MEDIA_PUBLIC_BASE_URL || process.env.PUBLIC_BASE_URL || ''
 const STREAM_SECRET = process.env.MEDIA_STREAM_SECRET || ''
-const MEDIA_URL_TTL = parseInt(process.env.MEDIA_URL_TTL, 10) || 3600
+const MEDIA_URL_TTL = parseInt(process.env.MEDIA_URL_TTL, 10) || 7 * 24 * 60 * 60
 const COS_DOMAIN = process.env.COS_DOMAIN || process.env.COS_INTERNAL_DOMAIN || ''
 const cosConfig = { SecretId: SECRET_ID, SecretKey: SECRET_KEY }
 if (COS_DOMAIN) cosConfig.Domain = COS_DOMAIN
@@ -38,6 +38,13 @@ function mediaSignature(key, expires) {
   return crypto.createHmac('sha256', STREAM_SECRET).update(`${key}:${expires}`).digest('hex')
 }
 
+function mediaExpires() {
+  const ttl = Math.max(MEDIA_URL_TTL, 60)
+  const now = Math.floor(Date.now() / 1000)
+  const bucketStart = Math.floor(now / ttl) * ttl
+  return bucketStart + ttl * 2
+}
+
 function verifyMediaSignature(key, expires, signature) {
   if (!STREAM_SECRET) return true
   const exp = Number(expires)
@@ -52,7 +59,7 @@ function toMediaUrl(url) {
   if (!key) return url || ''
   const params = [`key=${encodeURIComponent(key)}`]
   if (STREAM_SECRET) {
-    const expires = Math.floor(Date.now() / 1000) + MEDIA_URL_TTL
+    const expires = mediaExpires()
     params.push(`e=${expires}`)
     params.push(`s=${mediaSignature(key, expires)}`)
   }
