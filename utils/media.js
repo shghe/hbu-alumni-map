@@ -27,6 +27,15 @@ function isProxyUrl(url) {
   }
 }
 
+function isProxyPath(url) {
+  return /^\/api\/media\/stream\?/.test(url)
+}
+
+function toAbsoluteApiUrl(path) {
+  if (!API_BASE_URL || !path) return path || ''
+  return `${API_BASE_URL.replace(/\/+$/, '')}${path}`
+}
+
 function getKeyFromUrl(url) {
   if (!url || isLocalFile(url)) return ''
   if (/^(homes|reviews)\//.test(url)) return url
@@ -128,6 +137,7 @@ async function fetchChunked(key, endpoint, chunkSize) {
 function fetchMedia(url, endpoint, chunkSize) {
   return new Promise((resolve) => {
     if (!url) return resolve('')
+    if (isProxyPath(url)) return resolve(toAbsoluteApiUrl(url))
     if (isProxyUrl(url)) return resolve(url)
     if (IMG_CACHE[url]) return resolve(IMG_CACHE[url])
 

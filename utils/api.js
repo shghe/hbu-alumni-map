@@ -1,4 +1,4 @@
-const { API_BASE_URL, CLOUD_ENV, CLOUD_SERVICE } = require('./config')
+const { API_BASE_URL, CLOUD_ENV, CLOUD_SERVICE, PUBLIC_CLIENT_KEY } = require('./config')
 
 function joinUrl(base, path) {
   return base.replace(/\/+$/, '') + '/api' + path
@@ -16,7 +16,7 @@ function authHeader() {
 
 function request(method, path, data) {
   return new Promise((resolve, reject) => {
-    const header = { 'Content-Type': 'application/json', ...authHeader() }
+    const header = { 'Content-Type': 'application/json', 'X-HBU-CLIENT': PUBLIC_CLIENT_KEY, ...authHeader() }
     if (API_BASE_URL) {
       wx.request({
         url: joinUrl(API_BASE_URL, path),

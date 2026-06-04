@@ -50,14 +50,13 @@ function verifyMediaSignature(key, expires, signature) {
 function toMediaUrl(url) {
   const key = normalizeKey(url)
   if (!key) return url || ''
-  if (!PUBLIC_BASE_URL) return key
   const params = [`key=${encodeURIComponent(key)}`]
   if (STREAM_SECRET) {
     const expires = Math.floor(Date.now() / 1000) + MEDIA_URL_TTL
     params.push(`e=${expires}`)
     params.push(`s=${mediaSignature(key, expires)}`)
   }
-  return `${PUBLIC_BASE_URL.replace(/\/+$/, '')}/api/media/stream?${params.join('&')}`
+  return `/api/media/stream?${params.join('&')}`
 }
 
 function deleteFile(keyOrUrl) {
@@ -73,7 +72,7 @@ function deleteFile(keyOrUrl) {
 
 async function signUrls(urls) {
   if (!urls || urls.length === 0) return []
-  return urls.map(normalizeCosUrl)
+  return urls.map(toMediaUrl)
 }
 
 module.exports = {
