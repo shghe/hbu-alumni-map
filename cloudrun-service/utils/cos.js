@@ -17,8 +17,12 @@ function normalizeKey(value) {
   if (!value) return ''
   let key = String(value)
   try {
-    const parsed = new URL(key)
-    key = parsed.pathname.slice(1)
+    const parsed = new URL(key, 'http://media.local')
+    if (parsed.pathname === '/api/media/stream') {
+      key = parsed.searchParams.get('key') || ''
+    } else {
+      key = parsed.pathname.slice(1)
+    }
   } catch {}
   try { key = decodeURIComponent(key) } catch {}
   key = key.split('?')[0].replace(/^\/+/, '')

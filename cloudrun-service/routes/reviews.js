@@ -1,7 +1,7 @@
 const express = require('express')
 const router = express.Router()
 const { pool } = require('../utils/db')
-const { signUrls } = require('../utils/cos')
+const { signUrls, normalizeCosUrl } = require('../utils/cos')
 const { validateReviewData } = require('../utils/validator')
 
 // GET /api/reviews?homeId=xxx — 某个校友之家的评价
@@ -59,8 +59,9 @@ router.post('/', async (req, res) => {
     )
     const reviewId = result.insertId
 
-    if (data.photos && data.photos.length > 0) {
-      const values = data.photos.map(url => [reviewId, url])
+    const photos = [...new Set((data.photos || []).map(url => normalizeCosUrl(url)).filter(Boolean))]
+    if (photos.length > 0) {
+      const values = photos.map(url => [reviewId, url])
       await pool.query('INSERT INTO review_photos (review_id, url) VALUES ?', [values])
     }
 

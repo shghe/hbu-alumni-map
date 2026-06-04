@@ -2,7 +2,28 @@ const express = require('express')
 const router = express.Router()
 const { pool } = require('../utils/db')
 const { validateHomeData } = require('../utils/validator')
-const { signUrls } = require('../utils/cos')
+const { signUrls, normalizeCosUrl, deleteFile } = require('../utils/cos')
+
+function mediaKey(value) {
+  return normalizeCosUrl(value || '')
+}
+
+function mediaKeys(values) {
+  return [...new Set((values || []).map(mediaKey).filter(Boolean))]
+}
+
+async function deleteCosFiles(values) {
+  const failed = []
+  for (const key of mediaKeys(values)) {
+    try {
+      await deleteFile(key)
+    } catch (err) {
+      failed.push({ key, message: err.message })
+    }
+  }
+  if (failed.length) console.error('COS 删除失败:', failed)
+  return failed
+}
 
 // ---------- 辅助函数：写操作日志 ----------
 async function logAction(openid, adminName, action, detail) {
@@ -24,19 +45,22 @@ router.post('/homes', async (req, res) => {
     const data = req.body
     const errors = validateHomeData(data, false)
     if (errors.length) return res.status(400).json({ code: 400, message: errors.join('; ') })
+    const photos = mediaKeys(data.photos || [])
+    const video = mediaKey(data.video) || null
+    const videoPoster = mediaKey(data.videoPoster) || null
 
     const [result] = await pool.execute(
       `INSERT INTO alumni_homes (name, city, latitude, longitude, address, contact_name, phone, wechat, hours, description, video, video_poster)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [data.name, data.city, data.latitude, data.longitude,
        data.address || null, data.contactName || null, data.phone || null, data.wechat || null,
-       data.hours || null, data.description || null, data.video || null, data.videoPoster || null]
+       data.hours || null, data.description || null, video, videoPoster]
     )
     const homeId = result.insertId
 
     // 插入 photos
-    if (data.photos && data.photos.length > 0) {
-      const values = data.photos.map((url, i) => [homeId, url, i])
+    if (photos.length > 0) {
+      const values = photos.map((url, i) => [homeId, url, i])
       await pool.query('INSERT INTO home_photos (home_id, url, sort) VALUES ?', [values])
     }
 
@@ -63,34 +87,33 @@ router.put('/homes/:id', async (req, res) => {
     const data = req.body
     const errors = validateHomeData({ ...data, id }, true)
     if (errors.length) return res.status(400).json({ code: 400, message: errors.join('; ') })
+    const photos = mediaKeys(data.photos || [])
+    const video = mediaKey(data.video) || null
+    const videoPoster = mediaKey(data.videoPoster) || null
+
+    // 收集旧文件，用于清理 COS
+    const [[oldHome]] = await pool.execute('SELECT video, video_poster FROM alumni_homes WHERE id = ?', [id])
+    if (!oldHome) return res.status(404).json({ code: 404, message: '未找到' })
+    const [oldPhotos] = await pool.execute('SELECT url FROM home_photos WHERE home_id = ?', [id])
+    const oldUrls = mediaKeys([...oldPhotos.map(p => p.url), oldHome.video, oldHome.video_poster])
+    const newUrls = mediaKeys([...photos, video, videoPoster])
 
     await pool.execute(
       `UPDATE alumni_homes SET name=?, city=?, latitude=?, longitude=?, address=?, contact_name=?, phone=?, wechat=?, hours=?, description=?, video=?, video_poster=?
        WHERE id=?`,
       [data.name, data.city, data.latitude, data.longitude,
        data.address || null, data.contactName || null, data.phone || null, data.wechat || null,
-       data.hours || null, data.description || null, data.video || null, data.videoPoster || null,
+       data.hours || null, data.description || null, video, videoPoster,
        id]
     )
 
-    // 收集旧文件，用于清理 COS
-    const { deleteFile } = require('../utils/cos')
-    const [[oldHome]] = await pool.execute('SELECT video, video_poster FROM alumni_homes WHERE id = ?', [id])
-    const [oldPhotos] = await pool.execute('SELECT url FROM home_photos WHERE home_id = ?', [id])
-    const oldUrls = [...oldPhotos.map(p => p.url), oldHome.video, oldHome.video_poster].filter(Boolean)
-    const newUrls = [...(data.photos || []), data.video, data.videoPoster].filter(Boolean)
-
     // 删除不再引用的 COS 文件
-    for (const url of oldUrls) {
-      if (!newUrls.includes(url)) {
-        try { await deleteFile(url.replace(/^https?:\/\/[^/]+\//, '')) } catch {}
-      }
-    }
+    await deleteCosFiles(oldUrls.filter(url => !newUrls.includes(url)))
 
     // 重建 photos
     await pool.execute('DELETE FROM home_photos WHERE home_id = ?', [id])
-    if (data.photos && data.photos.length > 0) {
-      const values = data.photos.map((url, i) => [id, url, i])
+    if (photos.length > 0) {
+      const values = photos.map((url, i) => [id, url, i])
       await pool.query('INSERT INTO home_photos (home_id, url, sort) VALUES ?', [values])
     }
 
@@ -116,23 +139,20 @@ router.delete('/homes/:id', async (req, res) => {
     if (isNaN(id)) return res.status(400).json({ code: 400, message: 'id 无效' })
 
     // 收集所有 COS 文件
-    const { deleteFile } = require('../utils/cos')
     const [[home]] = await pool.execute('SELECT name, video, video_poster FROM alumni_homes WHERE id = ?', [id])
+    if (!home) return res.status(404).json({ code: 404, message: '未找到' })
     const [photos] = await pool.execute('SELECT url FROM home_photos WHERE home_id = ?', [id])
     const [reviewPhotos] = await pool.execute(
       'SELECT rp.url FROM review_photos rp JOIN reviews r ON rp.review_id = r.id WHERE r.home_id = ?', [id]
     )
 
-    for (const url of [...photos.map(p => p.url), ...reviewPhotos.map(p => p.url), home.video, home.video_poster]) {
-      if (!url) continue
-      try { await deleteFile(url.replace(/^https?:\/\/[^/]+\//, '')) } catch {}
-    }
+    const cosFailures = await deleteCosFiles([...photos.map(p => p.url), ...reviewPhotos.map(p => p.url), home.video, home.video_poster])
 
     const [[{ cnt: reviewCount }]] = await pool.execute('SELECT COUNT(*) as cnt FROM reviews WHERE home_id = ?', [id])
     await pool.execute('DELETE FROM alumni_homes WHERE id = ?', [id])
 
     await logAction(req.openid, req.adminName, 'delete', { homeId: id, name: home.name || '', deletedReviews: reviewCount })
-    res.json({ code: 0, deletedReviews: reviewCount })
+    res.json({ code: 0, deletedReviews: reviewCount, cosFailed: cosFailures.length })
   } catch (err) {
     console.error('DELETE /admin/homes/:id error:', err)
     res.status(500).json({ code: 500, message: '删除失败' })
@@ -180,19 +200,17 @@ router.delete('/reviews/:id', async (req, res) => {
     const id = parseInt(req.params.id, 10)
     if (isNaN(id)) return res.status(400).json({ code: 400, message: 'id 无效' })
 
-    const { deleteFile } = require('../utils/cos')
     const [[review]] = await pool.execute('SELECT * FROM reviews WHERE id = ?', [id])
+    if (!review) return res.status(404).json({ code: 404, message: '未找到' })
     const reviewInfo = review ? { nickname: review.nickname, homeId: String(review.home_id) } : {}
 
     const [photos] = await pool.execute('SELECT url FROM review_photos WHERE review_id = ?', [id])
-    for (const p of photos) {
-      try { await deleteFile(p.url.replace(/^https?:\/\/[^/]+\//, '')) } catch {}
-    }
+    const cosFailures = await deleteCosFiles(photos.map(p => p.url))
 
     await pool.execute('DELETE FROM reviews WHERE id = ?', [id])
 
     await logAction(req.openid, req.adminName, 'deleteReview', { reviewId: id, ...reviewInfo })
-    res.json({ code: 0 })
+    res.json({ code: 0, cosFailed: cosFailures.length })
   } catch (err) {
     console.error('DELETE /admin/reviews/:id error:', err)
     res.status(500).json({ code: 500, message: '删除失败' })
