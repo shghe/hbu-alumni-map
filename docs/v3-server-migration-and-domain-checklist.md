@@ -9,7 +9,7 @@
 - 服务器：腾讯轻量服务器，北京区，`81.70.99.236`
 - API 域名：`api.aluhomemap.top`
 - 后端目录：`/home/ubuntu/hbu-alumni-map-api`
-- 进程管理：PM2，进程名 `hbu-alumni-api`
+- 运行方式：Docker Compose，容器名 `hbu-alumni-api`
 - 反向代理：Nginx，当前 HTTP 80 可用
 - 数据库：服务器本机 MySQL，库名 `hbu_alumni_map`
 - 存储：腾讯 COS，北京桶 `hbu-alumni-map-single-1430752917`
@@ -18,6 +18,7 @@
 已验证：
 
 - `http://api.aluhomemap.top/api/health` 正常
+- Nginx `/api/` 反代到 Docker 容器监听的 `127.0.0.1:3002`
 - `/api/homes` 浏览器裸访问返回 `403`
 - 带小程序客户端 header 后 `/api/homes/1` 正常
 - `/api/media/diag` 显示 COS 解析到 `169.254.0.49`，`privateIp: true`，`headOk: true`
@@ -319,22 +320,33 @@ HTTP/1.1 206 Partial Content
 ssh -i /Users/lihe/Documents/个人文件/开发/hbu_alumni_map_tcserver.pem ubuntu@81.70.99.236
 ```
 
-查看 API 状态：
+查看 API 容器状态：
 
 ```bash
-pm2 status hbu-alumni-api
+cd /home/ubuntu/hbu-alumni-map-api
+sudo docker compose ps
 ```
 
-重启 API：
+重启 API 容器：
 
 ```bash
-pm2 restart hbu-alumni-api --update-env
+cd /home/ubuntu/hbu-alumni-map-api
+sudo docker compose restart
 ```
 
-查看日志：
+查看容器日志：
 
 ```bash
-pm2 logs hbu-alumni-api
+cd /home/ubuntu/hbu-alumni-map-api
+sudo docker compose logs -f --tail=100
+```
+
+重新构建并启动：
+
+```bash
+cd /home/ubuntu/hbu-alumni-map-api
+sudo docker compose build
+sudo docker compose up -d
 ```
 
 查看 Nginx 配置：
@@ -353,9 +365,19 @@ sudo nginx -t
 
 如果 HTTPS 配置后接口异常：
 
-1. 先检查 PM2 是否在线
-2. 再检查 Nginx 是否反代到 `127.0.0.1:3000`
+1. 先检查 Docker 容器是否在线
+2. 再检查 Nginx 是否反代到 `127.0.0.1:3002`
 3. 再检查证书和 443 监听
 4. 必要时临时恢复 HTTP 开发测试
 
 当前代码中开发版仍保留 HTTP 地址，可继续用开发者工具排查。
+
+如需临时回滚到旧 PM2 方式，服务器保留了 Nginx 备份：
+
+```bash
+sudo cp /etc/nginx/sites-available/hbu-alumni-api.pm2.bak /etc/nginx/sites-available/hbu-alumni-api
+sudo nginx -t
+sudo systemctl reload nginx
+cd /home/ubuntu/hbu-alumni-map-api
+pm2 start server.js --name hbu-alumni-api
+```

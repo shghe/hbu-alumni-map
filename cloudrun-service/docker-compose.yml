@@ -1,0 +1,13 @@
+services:
+  hbu-alumni-api:
+    build: .
+    image: hbu-alumni-api:3.0.0
+    container_name: hbu-alumni-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 3002
+      MYSQL_HOST: 127.0.0.1
+    network_mode: host
