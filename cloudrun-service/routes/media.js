@@ -195,7 +195,7 @@ router.post('/upload/abort', async (req, res) => {
 })
 
 router.get('/diag', async (req, res) => {
-  const host = process.env.COS_DOMAIN || process.env.COS_INTERNAL_DOMAIN || `${BUCKET}.cos.${REGION}.myqcloud.com`
+  const host = process.env.COS_DOMAIN || process.env.COS_INTERNAL_DOMAIN || `${BUCKET}.cos-internal.${REGION}.tencentcos.cn`
   dns.lookup(host, { all: true }, async (err, records) => {
     const ips = err ? [] : records.map(r => r.address)
     let headOk = false
