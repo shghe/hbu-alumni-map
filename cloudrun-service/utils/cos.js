@@ -73,7 +73,7 @@ function deleteFile(keyOrUrl) {
 
 async function signUrls(urls) {
   if (!urls || urls.length === 0) return []
-  return urls.map(toMediaUrl)
+  return urls.map(normalizeCosUrl)
 }
 
 module.exports = {
