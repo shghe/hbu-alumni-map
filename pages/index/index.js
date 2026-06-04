@@ -226,8 +226,8 @@ Page({
   buildMarkers(source) {
     return source.map((home, index) => ({
       id: index + 1,
-      latitude: home.latitude,
-      longitude: home.longitude,
+      latitude: Number(home.latitude),
+      longitude: Number(home.longitude),
       iconPath: '/assets/marker-home.png',
       title: home.name,
       width: 32,

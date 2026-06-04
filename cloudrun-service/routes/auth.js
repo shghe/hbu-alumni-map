@@ -29,12 +29,13 @@ router.post('/wechat-login', async (req, res) => {
 
     const appid = process.env.WX_APPID
     const secret = process.env.WX_SECRET
-    const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${appid}&secret=${secret}&js_code=${code}&grant_type=authorization_code`
+    const params = new URLSearchParams({ appid, secret, js_code: code, grant_type: 'authorization_code' })
+    const url = `https://api.weixin.qq.com/sns/jscode2session?${params.toString()}`
 
     // 用原生 https 模块（兼容性更好）
     const https = require('https')
     const wxData = await new Promise((resolve, reject) => {
-      https.get(url, { rejectUnauthorized: false }, (resp) => {
+      https.get(url, (resp) => {
         let body = ''
         resp.on('data', c => body += c)
         resp.on('end', () => {

@@ -171,8 +171,16 @@ Page({
     wx.makePhoneCall({ phoneNumber: phone.replace(/[^\d+]/g, '') })
   },
 
-  copyWechat() { wx.setClipboardData({ data: this.data.home.wechat, success: () => wx.showToast({ title: '微信号已复制', icon: 'none' }) }) },
-  copyAddress() { wx.setClipboardData({ data: this.data.home.address, success: () => wx.showToast({ title: '地址已复制', icon: 'none' }) }) },
+  copyWechat() {
+    const wechat = this.data.home.wechat || ''
+    if (!wechat) return wx.showToast({ title: '暂无微信号', icon: 'none' })
+    wx.setClipboardData({ data: wechat, success: () => wx.showToast({ title: '微信号已复制', icon: 'none' }) })
+  },
+  copyAddress() {
+    const address = this.data.home.address || ''
+    if (!address) return wx.showToast({ title: '暂无地址', icon: 'none' })
+    wx.setClipboardData({ data: address, success: () => wx.showToast({ title: '地址已复制', icon: 'none' }) })
+  },
 
   previewPhoto(event) {
     const index = Number(event.currentTarget.dataset.index)
