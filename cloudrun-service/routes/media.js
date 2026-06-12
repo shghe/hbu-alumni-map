@@ -62,6 +62,32 @@ async function getObjectChunk(key, start, size) {
   }
 }
 
+function parseRangeHeader(rangeHeader, totalSize) {
+  const match = String(rangeHeader || '').match(/^bytes=(\d*)-(\d*)$/)
+  if (!match) return null
+
+  let start
+  let end
+  if (match[1] === '' && match[2] !== '') {
+    const suffixLength = Number(match[2])
+    if (!Number.isFinite(suffixLength) || suffixLength <= 0) return null
+    start = Math.max(totalSize - suffixLength, 0)
+    end = totalSize - 1
+  } else {
+    start = Number(match[1])
+    end = match[2] === '' ? totalSize - 1 : Number(match[2])
+  }
+
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end < start || start >= totalSize) {
+    return null
+  }
+
+  return {
+    start,
+    end: Math.min(end, totalSize - 1)
+  }
+}
+
 async function downloadChunk(req, res, fallbackMime) {
   try {
     const key = normalizeKey(req.query.key)
@@ -94,22 +120,43 @@ async function streamObject(req, res) {
     if (!key) return res.status(400).json({ code: 400, message: 'invalid key' })
     if (!verifyMediaSignature(key, req.query.e, req.query.s)) return res.status(403).json({ code: 403, message: 'invalid signature' })
 
+    const head = await cosCall('headObject', { Bucket: BUCKET, Region: REGION, Key: key })
+    const headHeaders = head.headers || {}
+    const totalSize = Number(headHeaders['content-length']) || 0
+    const range = req.headers.range && totalSize ? parseRangeHeader(req.headers.range, totalSize) : null
+    if (req.headers.range && !range) {
+      res.setHeader('Content-Range', `bytes */${totalSize || '*'}`)
+      return res.status(416).end()
+    }
+
+    if (req.method === 'HEAD') {
+      res.status(range ? 206 : 200)
+      res.setHeader('Accept-Ranges', 'bytes')
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
+      res.setHeader('Content-Type', headHeaders['content-type'] || 'application/octet-stream')
+      res.setHeader('Content-Length', range ? range.end - range.start + 1 : totalSize)
+      if (headHeaders.etag) res.setHeader('ETag', headHeaders.etag)
+      if (headHeaders['last-modified']) res.setHeader('Last-Modified', headHeaders['last-modified'])
+      if (range) res.setHeader('Content-Range', `bytes ${range.start}-${range.end}/${totalSize}`)
+      return res.end()
+    }
+
     const params = { Bucket: BUCKET, Region: REGION, Key: key }
-    if (req.headers.range) params.Range = req.headers.range
+    if (range) params.Range = `bytes=${range.start}-${range.end}`
     const data = await cosCall('getObject', params)
     const headers = data.headers || {}
     const body = Buffer.isBuffer(data.Body) ? data.Body : Buffer.from(data.Body || '')
-    const status = headers['content-range'] ? 206 : 200
+    const status = range ? 206 : 200
+    const contentRange = range ? `bytes ${range.start}-${range.start + body.length - 1}/${totalSize}` : headers['content-range']
 
     res.status(status)
     res.setHeader('Accept-Ranges', 'bytes')
     res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
-    res.setHeader('Content-Type', headers['content-type'] || 'application/octet-stream')
+    res.setHeader('Content-Type', headers['content-type'] || headHeaders['content-type'] || 'application/octet-stream')
     res.setHeader('Content-Length', body.length)
-    if (headers.etag) res.setHeader('ETag', headers.etag)
-    if (headers['last-modified']) res.setHeader('Last-Modified', headers['last-modified'])
-    if (headers['content-range']) res.setHeader('Content-Range', headers['content-range'])
-    if (req.method === 'HEAD') return res.end()
+    if (headers.etag || headHeaders.etag) res.setHeader('ETag', headers.etag || headHeaders.etag)
+    if (headers['last-modified'] || headHeaders['last-modified']) res.setHeader('Last-Modified', headers['last-modified'] || headHeaders['last-modified'])
+    if (contentRange) res.setHeader('Content-Range', contentRange)
     return res.end(body)
   } catch (e) {
     console.error('media stream error:', e)

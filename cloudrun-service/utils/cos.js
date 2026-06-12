@@ -5,7 +5,6 @@ const SECRET_ID = process.env.COS_SECRET_ID
 const SECRET_KEY = process.env.COS_SECRET_KEY
 const BUCKET = process.env.COS_BUCKET || 'hbu-alumni-map-single-1430752917'
 const REGION = process.env.COS_REGION || 'ap-beijing'
-const PUBLIC_BASE_URL = process.env.MEDIA_PUBLIC_BASE_URL || process.env.PUBLIC_BASE_URL || ''
 const STREAM_SECRET = process.env.MEDIA_STREAM_SECRET || ''
 const MEDIA_URL_TTL = parseInt(process.env.MEDIA_URL_TTL, 10) || 7 * 24 * 60 * 60
 const COS_DOMAIN = process.env.COS_DOMAIN || process.env.COS_INTERNAL_DOMAIN || `${BUCKET}.cos-internal.${REGION}.tencentcos.cn`

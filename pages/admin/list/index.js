@@ -1,13 +1,4 @@
 const { api } = require('../../../utils/api')
-const { preloadImages } = require('../../../utils/media')
-
-function formatDate(date) {
-  if (!date) return ''
-  const d = new Date(date)
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  const dd = String(d.getDate()).padStart(2, '0')
-  return `${d.getFullYear()}-${mm}-${dd}`
-}
 
 function formatTime(date) {
   if (!date) return ''
@@ -24,9 +15,6 @@ Page({
     authenticated: false,
     myOpenid: '',
     homes: [],
-    allReviews: [],
-    expandedHome: null,
-    homeReviews: [],
     loading: false,
     // Tab
     currentTab: 'homes', // 'homes' | 'logs'
@@ -82,36 +70,13 @@ Page({
 
   loadHomes() {
     this.setData({ loading: true })
-    Promise.all([
-      api.get('/homes'),
-      api.get('/admin/reviews', null)
-    ]).then(([homesRes, reviewsRes]) => {
-      const homes = (homesRes.data || [])
-      const allReviews = (reviewsRes.data || [])
-      const countMap = {}
-      allReviews.forEach((r) => {
-        countMap[r.homeId] = (countMap[r.homeId] || 0) + 1
-      })
-      homes.forEach((h) => {
-        h.reviewCount = countMap[h._id || h.id] || 0
-      })
-      this.setData({ homes, allReviews, loading: false, expandedHome: null, homeReviews: [] })
+    api.get('/homes').then((res) => {
+      const homes = (res.data || [])
+      this.setData({ homes, loading: false })
     }).catch(() => {
       this.setData({ loading: false })
       wx.showToast({ title: '加载失败', icon: 'none' })
     })
-  },
-
-  async toggleReviews(event) {
-    const homeId = event.currentTarget.dataset.id
-    if (this.data.expandedHome === homeId) {
-      this.setData({ expandedHome: null, homeReviews: [] })
-      return
-    }
-    const reviews = await Promise.all(this.data.allReviews
-      .filter((r) => r.homeId === homeId)
-      .map(async (r) => ({ ...r, photos: (await preloadImages(r.photos || [])).filter(Boolean) })))
-    this.setData({ expandedHome: homeId, homeReviews: reviews })
   },
 
   addHome() {
@@ -160,18 +125,8 @@ Page({
   deleteHome(event) {
     const id = event.currentTarget.dataset.id
     const name = event.currentTarget.dataset.name
-    this.showConfirm('确认删除', `确定删除「${name}」吗？相关评论也将被删除。`, () => {
+    this.showConfirm('确认删除', `确定删除「${name}」吗？`, () => {
       api.del(`/admin/homes/${id}`).then(() => {
-        wx.showToast({ title: '已删除' })
-        this.loadHomes()
-      })
-    })
-  },
-
-  deleteReview(event) {
-    const id = event.currentTarget.dataset.id
-    this.showConfirm('确认删除', '确定删除这条评论吗？', () => {
-      api.del(`/admin/reviews/${id}`).then(() => {
         wx.showToast({ title: '已删除' })
         this.loadHomes()
       })
@@ -204,9 +159,6 @@ Page({
     this.setData({
       authenticated: false,
       homes: [],
-      allReviews: [],
-      expandedHome: null,
-      homeReviews: [],
       logs: []
     })
   }

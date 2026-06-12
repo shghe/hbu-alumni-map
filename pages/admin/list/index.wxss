@@ -308,17 +308,6 @@
   gap: 10rpx;
 }
 
-.review-btn {
-  min-width: auto;
-  height: 52rpx;
-  padding: 0 14rpx;
-  border: 1rpx solid #0b5d4a;
-  border-radius: 6px;
-  background: #e8f3ef;
-  color: #0b5d4a;
-  font-size: 22rpx;
-}
-
 .edit-btn {
   min-width: auto;
   height: 52rpx;
@@ -341,87 +330,11 @@
   font-size: 22rpx;
 }
 
-/* ---------- Review Sublist ---------- */
-
-.review-sublist {
-  padding: 0 20rpx 16rpx;
-  border-top: 1rpx solid #eef2f0;
-}
-
-.review-empty {
+.empty-tip {
   padding: 32rpx 0;
   text-align: center;
   color: #8d9b95;
   font-size: 24rpx;
-}
-
-.review-item {
-  padding: 16rpx 0;
-  border-bottom: 1rpx solid #f0f3f1;
-}
-
-.review-item:last-child {
-  border-bottom: 0;
-}
-
-.review-top {
-  display: flex;
-  align-items: center;
-  gap: 10rpx;
-  flex-wrap: wrap;
-}
-
-.review-name {
-  color: #17201d;
-  font-size: 24rpx;
-  font-weight: 600;
-}
-
-.review-stars {
-  color: #d89b2b;
-  font-size: 22rpx;
-}
-
-.review-date {
-  color: #8d9b95;
-  font-size: 18rpx;
-}
-
-.review-body {
-  margin-top: 8rpx;
-  color: #2b3a35;
-  font-size: 24rpx;
-  line-height: 1.5;
-}
-
-.review-photos {
-  display: flex;
-  gap: 8rpx;
-  margin-top: 10rpx;
-}
-
-.review-photo {
-  width: 100rpx;
-  height: 100rpx;
-  border-radius: 4px;
-  background: #dfe7e4;
-}
-
-.review-footer {
-  margin-top: 10rpx;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.delete-btn-small {
-  min-width: auto;
-  height: 44rpx;
-  padding: 0 16rpx;
-  border: none;
-  border-radius: 4px;
-  background: #fce8e8;
-  color: #d94a4a;
-  font-size: 20rpx;
 }
 
 /* ---------- Custom Modal ---------- */

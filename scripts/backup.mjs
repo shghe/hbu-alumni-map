@@ -25,7 +25,7 @@ const API_BASE = process.env.API_BASE || 'http://api.aluhomemap.top'
 const CLIENT_KEY = 'hbu-alumni-map-miniapp-v3'
 const OUTPUT = process.argv.includes('--output')
   ? process.argv[process.argv.indexOf('--output') + 1]
-  : path.join(process.cwd(), '校友之家备份')
+  : path.join(process.cwd(), '..', '校友之家备份')
 const SKIP_MEDIA = process.argv.includes('--skip-media')
 
 const SYNC_FILE = path.join(OUTPUT, '.last_sync')

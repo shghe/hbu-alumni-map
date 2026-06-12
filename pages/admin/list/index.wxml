@@ -40,32 +40,8 @@
             <text class="row-city">{{item.city}}</text>
           </view>
           <view class="row-actions">
-            <button class="review-btn" data-id="{{item._id}}" bindtap="toggleReviews">
-              评论 {{item.reviewCount}}
-            </button>
             <button class="edit-btn" data-id="{{item._id}}" bindtap="editHome">编辑</button>
             <button class="delete-btn" data-id="{{item._id}}" data-name="{{item.name}}" bindtap="deleteHome">删除</button>
-          </view>
-        </view>
-
-        <!-- Expanded Reviews -->
-        <view wx:if="{{expandedHome === item._id}}" class="review-sublist">
-          <view wx:if="{{homeReviews.length === 0}}" class="review-empty">暂无评论</view>
-          <view wx:for="{{homeReviews}}" wx:key="_id" class="review-item">
-            <view class="review-top">
-              <text class="review-name">{{item.nickname}}</text>
-              <text class="review-stars">
-                <text wx:for="{{5}}" wx:key="*this">{{item.rating > index ? '★' : '☆'}}</text>
-              </text>
-              <text class="review-date">{{item.createTime}}</text>
-            </view>
-            <view class="review-body">{{item.content}}</view>
-            <view wx:if="{{item.photos && item.photos.length > 0}}" class="review-photos">
-              <image wx:for="{{item.photos}}" wx:key="*this" src="{{item}}" mode="aspectFill" class="review-photo" />
-            </view>
-            <view class="review-footer">
-              <button class="delete-btn-small" data-id="{{item._id}}" bindtap="deleteReview">删除</button>
-            </view>
           </view>
         </view>
       </view>
@@ -74,7 +50,7 @@
     <!-- Logs -->
     <scroll-view wx:elif="{{currentTab === 'logs'}}" scroll-y class="list-scroll">
       <view wx:if="{{logsLoading}}" class="loading-tip">加载中...</view>
-      <view wx:elif="{{logs.length === 0}}" class="review-empty">暂无操作日志</view>
+      <view wx:elif="{{logs.length === 0}}" class="empty-tip">暂无操作日志</view>
       <view wx:for="{{logs}}" wx:key="_id" class="log-item">
         <view class="log-top">
           <text class="log-admin">{{item.adminName}}</text>

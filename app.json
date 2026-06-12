@@ -21,5 +21,6 @@
     "chooseLocation"
   ],
   "sitemapLocation": "sitemap.json",
-  "cloud": true
+  "cloud": true,
+  "lazyCodeLoading": "requiredComponents"
 }

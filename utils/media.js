@@ -42,15 +42,25 @@ function getKeyFromUrl(url) {
 
   try {
     const parsed = new URL(url)
+    if (parsed.pathname === '/api/media/stream') {
+      const key = parsed.searchParams.get('key') || ''
+      return normalizeKey(key)
+    }
     if (!isCosHost(parsed.hostname)) {
       return ''
     }
     let key = parsed.pathname.slice(1)
     try { key = decodeURIComponent(key) } catch (e) {}
-    return key.split('?')[0]
+    return normalizeKey(key.split('?')[0])
   } catch (e) {
     return ''
   }
+}
+
+function normalizeKey(key) {
+  if (!key) return ''
+  const value = String(key).replace(/^\/+/, '')
+  return /^(homes|reviews)\//.test(value) && !value.includes('..') ? value : ''
 }
 
 function streamUrlForKey(key) {
@@ -177,4 +187,71 @@ async function preloadImages(urls) {
   return Promise.all(urls.map(url => url ? fetchImage(url) : Promise.resolve('')))
 }
 
-module.exports = { fetchImage, fetchVideo, preloadImages, getKeyFromUrl }
+// Download a network URL to local file for preview (reuse cache)
+function downloadToLocal(networkUrl, key) {
+  return new Promise(async (resolve) => {
+    if (!networkUrl || !key) return resolve(networkUrl)
+    // Check disk cache
+    const cached = await getCachedFile(key)
+    if (cached) return resolve(cached)
+    // Download to local
+    const localPath = localPathForKey(key)
+    wx.downloadFile({
+      url: networkUrl,
+      success: (res) => {
+        if (res.statusCode === 200) {
+          try {
+            const fs = wx.getFileSystemManager()
+            fs.saveFileSync(res.tempFilePath, localPath)
+          } catch (e) {
+            // fallback to temp file
+            return resolve(res.tempFilePath)
+          }
+          setCachedFile(key, localPath)
+          resolve(localPath)
+        } else {
+          resolve(networkUrl)
+        }
+      },
+      fail: () => resolve(networkUrl)
+    })
+  })
+}
+
+// Ensure an image URL is cached locally and return the local path for preview
+async function ensureLocalForPreview(networkUrl) {
+  if (!networkUrl || isLocalFile(networkUrl)) return networkUrl
+  const key = getKeyFromUrl(networkUrl) || networkUrl.replace(/[^\w.-]/g, '_')
+  return downloadToLocal(networkUrl, key)
+}
+
+// Get cached local path only (don't download if not cached)
+async function getCachedPreview(networkUrl) {
+  if (!networkUrl || isLocalFile(networkUrl)) return networkUrl
+  const key = getKeyFromUrl(networkUrl) || networkUrl.replace(/[^\w.-]/g, '_')
+  const cached = await getCachedFile(key)
+  return cached || networkUrl
+}
+
+// Download to cache in background (fire and forget)
+function cacheInBackground(networkUrl, key) {
+  if (!networkUrl || !key) return
+  getCachedFile(key).then(cached => {
+    if (cached) return // already cached
+    wx.downloadFile({
+      url: networkUrl,
+      success: (res) => {
+        if (res.statusCode === 200) {
+          const localPath = localPathForKey(key)
+          try {
+            wx.getFileSystemManager().saveFileSync(res.tempFilePath, localPath)
+          } catch (e) { return }
+          setCachedFile(key, localPath)
+        }
+      },
+      fail: () => {}
+    })
+  })
+}
+
+module.exports = { fetchImage, fetchVideo, preloadImages, getKeyFromUrl, downloadToLocal, ensureLocalForPreview, getCachedPreview, cacheInBackground, getCachedFile }

@@ -13,7 +13,7 @@ function getEnvVersion() {
   }
 }
 
-const API_BASE_URL = getEnvVersion() === 'release' ? HTTPS_API_BASE_URL : HTTP_API_BASE_URL
+const API_BASE_URL = HTTPS_API_BASE_URL
 
 module.exports = {
   API_BASE_URL,

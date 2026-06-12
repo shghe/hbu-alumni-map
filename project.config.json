@@ -39,7 +39,16 @@
   },
   "simulatorPluginLibVersion": {},
   "packOptions": {
-    "ignore": [],
+    "ignore": [
+      { "value": "校友之家备份/**", "type": "folder" },
+      { "value": "docs/**", "type": "folder" },
+      { "value": "scripts/**", "type": "folder" },
+      { "value": "cloudrun-service/**", "type": "folder" },
+      { "value": ".cloudbase/**", "type": "folder" },
+      { "value": "README.md", "type": "file" },
+      { "value": "使用说明.md", "type": "file" },
+      { "value": "入驻说明.md", "type": "file" }
+    ],
     "include": []
   },
   "editorSetting": {}
