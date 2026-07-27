@@ -1,6 +1,6 @@
 const localHomes = require('../../data/homes')
 const { api } = require('../../utils/api')
-const { fetchImage, fetchVideo, cacheInBackground, getCachedPreview, getKeyFromUrl, pauseDownloads, resumeDownloads } = require('../../utils/media')
+const { fetchImage, fetchVideo, cacheInBackground, downloadImmediate, getCachedPreview, getKeyFromUrl, pauseDownloads, resumeDownloads } = require('../../utils/media')
 
 const REST_PHOTO_BATCH_SIZE = 2
 const REST_PHOTO_BATCH_DELAY = 250
@@ -177,13 +177,12 @@ Page({
       if (url) this.setData({ 'home.video': url })
     }
     if (!url) { wx.hideLoading(); return wx.showToast({ title: '视频加载失败', icon: 'none' }) }
-    // Use cached file if available, otherwise stream from network and cache in background
     const localUrl = getCachedPreview(url)
     wx.hideLoading()
-    // Cache in background for future plays
+    // If not cached yet, download immediately alongside playback (bypass queue)
     if (localUrl === url) {
       const key = getKeyFromUrl(url)
-      if (key) cacheInBackground(url, key)
+      if (key) downloadImmediate(url, key)
     }
     wx.previewMedia({ sources: [{ url: localUrl, type: 'video' }], current: 0 })
   },

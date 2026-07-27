@@ -269,4 +269,25 @@ function cacheInBackground(networkUrl, key) {
   downloadToLocal(networkUrl, key) // shared download, fire and forget
 }
 
-module.exports = { fetchImage, fetchVideo, preloadImages, getKeyFromUrl, getCachedPreview, cacheInBackground, getCachedFile, pauseDownloads, resumeDownloads }
+// Download immediately without queuing (for video: cache while playing)
+function downloadImmediate(networkUrl, key) {
+  if (!networkUrl || !key) return
+  getCachedFile(key).then(cached => {
+    if (cached) return // already cached
+    wx.downloadFile({
+      url: networkUrl,
+      success: (res) => {
+        if (res.statusCode === 200) {
+          const localPath = localPathForKey(key)
+          try {
+            wx.getFileSystemManager().saveFileSync(res.tempFilePath, localPath)
+          } catch (e) { return }
+          setCachedFile(key, localPath)
+        }
+      },
+      fail: () => {}
+    })
+  })
+}
+
+module.exports = { fetchImage, fetchVideo, preloadImages, getKeyFromUrl, getCachedPreview, cacheInBackground, downloadImmediate, getCachedFile, pauseDownloads, resumeDownloads }
