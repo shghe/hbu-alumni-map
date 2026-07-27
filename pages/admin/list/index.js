@@ -1,3 +1,4 @@
+const { APP_VERSION } = require('../../../utils/config')
 const { api } = require('../../../utils/api')
 
 function formatTime(date) {
@@ -12,6 +13,7 @@ function formatTime(date) {
 
 Page({
   data: {
+    version: APP_VERSION,
     authenticated: false,
     myOpenid: '',
     homes: [],

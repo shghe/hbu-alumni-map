@@ -60,6 +60,8 @@
         <view class="log-detail">{{item.detail.name || item.detail.nickname || '-'}}</view>
       </view>
     </scroll-view>
+
+    <view class="version-tag">v{{version}}</view>
   </view>
 
   <!-- Custom Confirm Modal -->

@@ -1,6 +1,6 @@
 const localHomes = require('../../data/homes')
 const { api } = require('../../utils/api')
-const { fetchImage, fetchVideo, ensureLocalForPreview, getCachedPreview, cacheInBackground, getKeyFromUrl } = require('../../utils/media')
+const { fetchImage, fetchVideo, cacheInBackground, getCachedPreview, getKeyFromUrl, pauseDownloads, resumeDownloads } = require('../../utils/media')
 
 const REST_PHOTO_BATCH_SIZE = 2
 const REST_PHOTO_BATCH_DELAY = 250
@@ -13,10 +13,12 @@ Page({
 
   onLoad(options) {
     this.homeId = options.id
+    resumeDownloads()
     this.loadHome(options.id)
   },
 
   onUnload() {
+    pauseDownloads()
     if (this._restPhotoTimer) {
       clearTimeout(this._restPhotoTimer)
       this._restPhotoTimer = null
@@ -44,12 +46,21 @@ Page({
     const photoKeys = home.photos || []
     const videoPosterKey = home.videoPoster || ''
     const videoKey = home.video || ''
+    // Compute full preview URLs from all keys upfront (before async loading)
+    const API_BASE = 'https://api.aluhomemap.top'
+    const photoPreviews = photoKeys.map(k => {
+      if (!k) return ''
+      if (/^https?:\/\//.test(k) || /^wxfile:\/\//.test(k)) return k
+      if (/^\/api\//.test(k)) return API_BASE + k
+      return k
+    })
     this.setData({
       home: {
         ...home,
         id: home._id || home.id,
         photos: [],
         photoKeys,
+        photoPreviews,
         videoPoster: '',
         videoPosterKey,
         video: '',
@@ -102,12 +113,21 @@ Page({
       const photos = await Promise.all(batch.map(url => fetchImage(url).catch(() => '')))
       loadedPhotos.push(...photos.filter(Boolean))
       this.setData({ 'home.photos': loadedPhotos })
+      // Cache to local storage in background for instant preview later
+      this.cachePhotosInBackground(loadedPhotos)
       if (batches.length) {
         this._restPhotoTimer = setTimeout(loadBatch, REST_PHOTO_BATCH_DELAY)
       }
     }
 
     this._restPhotoTimer = setTimeout(loadBatch, REST_PHOTO_BATCH_DELAY)
+  },
+
+  cachePhotosInBackground(photos) {
+    photos.forEach(url => {
+      const urlObj = url && url.match(/\/api\/media\/stream\?key=([^&]+)/)
+      if (urlObj) cacheInBackground(url, decodeURIComponent(urlObj[1]))
+    })
   },
 
   prefetchVideo() {
@@ -141,14 +161,10 @@ Page({
     wx.setClipboardData({ data: address, success: () => wx.showToast({ title: '地址已复制', icon: 'none' }) })
   },
 
-  async previewPhoto(event) {
+  previewPhoto(event) {
     const index = Number(event.currentTarget.dataset.index)
-    const urls = this.data.home.photos
-    // Use local cached copies for preview to avoid re-downloading
-    wx.showLoading({ title: '加载中...' })
-    const localUrls = await Promise.all(urls.map(url => ensureLocalForPreview(url)))
-    wx.hideLoading()
-    wx.previewImage({ current: localUrls[index] || urls[index], urls: localUrls.map((u, i) => u || urls[i]) })
+    const urls = this.data.home.photoPreviews.map(u => getCachedPreview(u))
+    wx.previewImage({ current: urls[index], urls })
   },
 
   async playVideo() {
@@ -162,7 +178,7 @@ Page({
     }
     if (!url) { wx.hideLoading(); return wx.showToast({ title: '视频加载失败', icon: 'none' }) }
     // Use cached file if available, otherwise stream from network and cache in background
-    const localUrl = await getCachedPreview(url)
+    const localUrl = getCachedPreview(url)
     wx.hideLoading()
     // Cache in background for future plays
     if (localUrl === url) {

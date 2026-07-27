@@ -337,6 +337,13 @@
   font-size: 24rpx;
 }
 
+.version-tag {
+  text-align: center;
+  padding: 16rpx 0 24rpx;
+  color: #bcc5c2;
+  font-size: 20rpx;
+}
+
 /* ---------- Custom Modal ---------- */
 
 .modal-overlay {

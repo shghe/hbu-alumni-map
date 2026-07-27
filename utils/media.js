@@ -187,57 +187,26 @@ async function preloadImages(urls) {
   return Promise.all(urls.map(url => url ? fetchImage(url) : Promise.resolve('')))
 }
 
-// Download a network URL to local file for preview (reuse cache)
-function downloadToLocal(networkUrl, key) {
-  return new Promise(async (resolve) => {
-    if (!networkUrl || !key) return resolve(networkUrl)
-    // Check disk cache
-    const cached = await getCachedFile(key)
-    if (cached) return resolve(cached)
-    // Download to local
-    const localPath = localPathForKey(key)
-    wx.downloadFile({
-      url: networkUrl,
-      success: (res) => {
-        if (res.statusCode === 200) {
-          try {
-            const fs = wx.getFileSystemManager()
-            fs.saveFileSync(res.tempFilePath, localPath)
-          } catch (e) {
-            // fallback to temp file
-            return resolve(res.tempFilePath)
-          }
-          setCachedFile(key, localPath)
-          resolve(localPath)
-        } else {
-          resolve(networkUrl)
-        }
-      },
-      fail: () => resolve(networkUrl)
-    })
-  })
-}
+// Shared download cache: one download per key, all callers share the same promise
+const DOWNLOAD_CACHE = {}
 
-// Ensure an image URL is cached locally and return the local path for preview
-async function ensureLocalForPreview(networkUrl) {
-  if (!networkUrl || isLocalFile(networkUrl)) return networkUrl
-  const key = getKeyFromUrl(networkUrl) || networkUrl.replace(/[^\w.-]/g, '_')
-  return downloadToLocal(networkUrl, key)
-}
+// Background download queue: limit concurrent wx.downloadFile to avoid blocking API requests
+// Only 1 at a time when page is visible, so image loading has enough network connections
+const MAX_BG_ACTIVE = 1
+const MAX_BG_IDLE = 2
+let activeDownloads = 0
+let downloadPaused = false
+let bgConcurrency = MAX_BG_IDLE
+let resumeCooldown = 0 // timestamp: don't start new downloads until this passes
+const downloadQueue = []
 
-// Get cached local path only (don't download if not cached)
-async function getCachedPreview(networkUrl) {
-  if (!networkUrl || isLocalFile(networkUrl)) return networkUrl
-  const key = getKeyFromUrl(networkUrl) || networkUrl.replace(/[^\w.-]/g, '_')
-  const cached = await getCachedFile(key)
-  return cached || networkUrl
-}
+function pauseDownloads() { downloadPaused = true; bgConcurrency = MAX_BG_IDLE; resumeCooldown = 0 }
+function resumeDownloads() { downloadPaused = false; bgConcurrency = MAX_BG_ACTIVE; resumeCooldown = Date.now() + 2000 }
 
-// Download to cache in background (fire and forget)
-function cacheInBackground(networkUrl, key) {
-  if (!networkUrl || !key) return
-  getCachedFile(key).then(cached => {
-    if (cached) return // already cached
+function pumpDownloads() {
+  while (!downloadPaused && Date.now() > resumeCooldown && activeDownloads < bgConcurrency && downloadQueue.length) {
+    const { networkUrl, key, resolve } = downloadQueue.shift()
+    activeDownloads++
     wx.downloadFile({
       url: networkUrl,
       success: (res) => {
@@ -245,13 +214,59 @@ function cacheInBackground(networkUrl, key) {
           const localPath = localPathForKey(key)
           try {
             wx.getFileSystemManager().saveFileSync(res.tempFilePath, localPath)
-          } catch (e) { return }
-          setCachedFile(key, localPath)
+            setCachedFile(key, localPath)
+            resolve(localPath)
+          } catch (e) {
+            resolve(networkUrl) // fallback
+          }
+        } else {
+          resolve(networkUrl)
         }
       },
-      fail: () => {}
+      fail: () => resolve(networkUrl),
+      complete: () => {
+        activeDownloads--
+        pumpDownloads()
+      }
     })
-  })
+  }
 }
 
-module.exports = { fetchImage, fetchVideo, preloadImages, getKeyFromUrl, downloadToLocal, ensureLocalForPreview, getCachedPreview, cacheInBackground, getCachedFile }
+// Download a network URL to local storage. All callers for the same key share one download.
+function downloadToLocal(networkUrl, key) {
+  if (!networkUrl || !key) return Promise.resolve(networkUrl)
+  if (DOWNLOAD_CACHE[key]) return DOWNLOAD_CACHE[key]
+
+  DOWNLOAD_CACHE[key] = new Promise((resolve) => {
+    getCachedFile(key).then(cached => {
+      if (cached) { delete DOWNLOAD_CACHE[key]; return resolve(cached) }
+      downloadQueue.push({ networkUrl, key, resolve })
+      // Clean up DOWNLOAD_CACHE when done
+      const origResolve = resolve
+      downloadQueue[downloadQueue.length - 1].resolve = (result) => {
+        delete DOWNLOAD_CACHE[key]
+        origResolve(result)
+      }
+      pumpDownloads()
+    })
+  })
+  return DOWNLOAD_CACHE[key]
+}
+
+// Sync version: checks memory + storage cache, returns local path or original URL
+function getCachedPreview(url) {
+  if (!url || isLocalFile(url)) return url
+  const key = getKeyFromUrl(url) || url.replace(/[^\w.-]/g, '_')
+  if (IMG_CACHE[key]) return IMG_CACHE[key]
+  const cacheMap = getCacheMap()
+  if (cacheMap[key]) return cacheMap[key]
+  return url
+}
+
+// Kick off download in background; doesn't wait for result
+function cacheInBackground(networkUrl, key) {
+  if (!networkUrl || !key) return
+  downloadToLocal(networkUrl, key) // shared download, fire and forget
+}
+
+module.exports = { fetchImage, fetchVideo, preloadImages, getKeyFromUrl, getCachedPreview, cacheInBackground, getCachedFile, pauseDownloads, resumeDownloads }
