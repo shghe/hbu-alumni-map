@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>校友地图主页面示意</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #f5f7f8; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; }
+    .phone { position: relative; width: 375px; height: 812px; background: #e7ecea; overflow: hidden; border-radius: 20px; box-shadow: 0 18px 60px rgba(14, 44, 36, 0.18); }
+    .status-bar { height: 20px; background: #0b5d4a; }
+    .nav-bar { height: 44px; background: #0b5d4a; color: #ffffff; font-size: 16px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+    .map { position: absolute; left: 0; top: 64px; right: 0; bottom: 0; background: #dce7e1; overflow: hidden; }
+    .road { position: absolute; background: #ffffff; border-radius: 3px; }
+    .road-h1 { left: -20px; top: 190px; width: 420px; height: 16px; transform: rotate(-6deg); }
+    .road-h2 { left: -30px; top: 360px; width: 430px; height: 18px; transform: rotate(3deg); }
+    .road-v1 { left: 130px; top: -30px; width: 14px; height: 420px; transform: rotate(8deg); }
+    .road-v2 { left: 270px; top: -20px; width: 12px; height: 440px; transform: rotate(-4deg); }
+    .park { position: absolute; border-radius: 12px; background: #bfdccb; }
+    .park-1 { left: 22px; top: 120px; width: 100px; height: 72px; border-radius: 40% 60% 50% 50%; }
+    .park-2 { left: 220px; top: 430px; width: 120px; height: 90px; border-radius: 50% 45% 55% 50%; }
+    .water { position: absolute; border-radius: 50%; background: #b6d7ea; }
+    .water-1 { left: 8px; top: 560px; width: 150px; height: 150px; border-radius: 55% 45% 60% 40%; }
+    .marker { position: absolute; transform: translate(-50%, -100%); text-align: center; }
+    .marker img { width: 34px; height: 34px; display: block; margin: 0 auto; }
+    .marker-label { margin-top: -2px; background: #ffffff; border: 1px solid #cfe3da; color: #0b5d4a; font-size: 10px; padding: 1px 6px; border-radius: 8px; box-shadow: 0 2px 6px rgba(14, 44, 36, 0.12); white-space: nowrap; }
+    .marker-1 { left: 156px; top: 260px; }
+    .marker-2 { left: 250px; top: 400px; }
+    .marker-3 { left: 104px; top: 470px; }
+    .marker-user { left: 66px; top: 190px; }
+    .user-dot { width: 14px; height: 14px; margin: 0 auto; background: #2f7bd8; border: 3px solid #ffffff; border-radius: 50%; box-shadow: 0 0 0 6px rgba(47, 123, 216, 0.2); }
+    .header { position: absolute; top: 74px; left: 12px; right: 12px; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; background: rgba(255, 255, 255, 0.95); border-radius: 8px; box-shadow: 0 6px 20px rgba(14, 44, 36, 0.12); }
+    .eyebrow { color: #6d7a75; font-size: 9px; }
+    .title-row { display: flex; align-items: center; gap: 6px; margin-top: 3px; }
+    .title { color: #0b5d4a; font-size: 16px; font-weight: 700; }
+    .city-picker { border: 1px solid #dbe4e0; background: #f7faf9; color: #0b5d4a; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 6px; }
+    .summary { margin-top: 4px; color: #4e5c57; font-size: 10px; }
+    .header-actions { display: flex; align-items: center; gap: 6px; }
+    .gear { width: 24px; height: 24px; border-radius: 50%; background: #edf4f1; color: #0b5d4a; font-size: 13px; line-height: 24px; text-align: center; }
+    .locate { background: #0b5d4a; color: #ffffff; font-size: 11px; padding: 6px 10px; border-radius: 6px; }
+    .panel { position: absolute; left: 0; right: 0; bottom: 0; z-index: 6; padding: 12px 12px 10px; background: rgba(255, 255, 255, 0.98); border-radius: 18px 18px 0 0; box-shadow: 0 -8px 28px rgba(14, 44, 36, 0.14); }
+    .search-row { display: flex; gap: 8px; align-items: center; }
+    .search-input { flex: 1; height: 34px; padding: 0 12px; border: 1px solid #dbe4e0; border-radius: 8px; background: #f7faf9; color: #17201d; font-size: 13px; display: flex; align-items: center; }
+    .search-input span { color: #9aa7a2; }
+    .traffic { width: 52px; height: 34px; border: 1px solid #dbe4e0; background: #ffffff; color: #33413c; font-size: 12px; display: flex; align-items: center; justify-content: center; border-radius: 6px; }
+    .filter-row { display: flex; gap: 8px; margin-top: 10px; overflow: hidden; white-space: nowrap; }
+    .chip { flex: 0 0 auto; height: 26px; padding: 0 12px; border: 1px solid #dbe4e0; background: #ffffff; color: #33413c; font-size: 11px; border-radius: 14px; display: flex; align-items: center; }
+    .chip.active { border-color: #0b5d4a; background: #0b5d4a; color: #ffffff; }
+    .home-list { margin-top: 8px; }
+    .home-card { display: flex; gap: 8px; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eef2f0; }
+    .home-title { color: #17201d; font-size: 14px; font-weight: 700; }
+    .home-meta { margin-top: 3px; color: #5b6964; font-size: 11px; }
+    .home-address { margin-top: 3px; color: #5b6964; font-size: 11px; text-decoration: underline; text-decoration-color: #cbd8d3; text-underline-offset: 2px; }
+    .tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+    .tag { padding: 2px 7px; border-radius: 6px; background: #edf4f1; color: #0b5d4a; font-size: 10px; }
+    .card-actions { flex: 0 0 64px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+    .nav-btn { width: 58px; height: 28px; background: #d89b2b; color: #ffffff; font-size: 11px; display: flex; align-items: center; justify-content: center; border-radius: 6px; }
+    .distance { color: #6d7a75; font-size: 10px; }
+    .caption { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(11, 93, 74, 0.92); color: #ffffff; font-size: 11px; text-align: center; padding: 8px 10px; z-index: 7; }
+  </style>
+</head>
+<body>
+  <div class="phone">
+    <div class="status-bar"></div>
+    <div class="nav-bar">河北大学校友地图</div>
+
+    <div class="map">
+      <div class="road road-h1"></div>
+      <div class="road road-h2"></div>
+      <div class="road road-v1"></div>
+      <div class="road road-v2"></div>
+      <div class="park park-1"></div>
+      <div class="park park-2"></div>
+      <div class="water water-1"></div>
+
+      <div class="marker marker-user"><div class="user-dot"></div></div>
+      <div class="marker marker-1"><img src="../assets/marker-home.png" alt="" /><div class="marker-label">半亩塘艺术沙龙</div></div>
+      <div class="marker marker-2"><img src="../assets/marker-home.png" alt="" /><div class="marker-label">极漠渡</div></div>
+      <div class="marker marker-3"><img src="../assets/marker-home.png" alt="" /><div class="marker-label">琉璃花园</div></div>
+    </div>
+
+    <div class="header">
+      <div>
+        <div class="eyebrow">Hebei University Alumni</div>
+        <div class="title-row">
+          <span class="title">HBU校友之家地图</span>
+          <span class="city-picker">秦皇岛 ▾</span>
+        </div>
+        <div class="summary">15 个校友之家</div>
+      </div>
+      <div class="header-actions">
+        <div class="gear">⚙</div>
+        <div class="locate">定位</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="search-row">
+        <div class="search-input"><span>搜索城市、服务、校友之家</span></div>
+        <div class="traffic">路况</div>
+      </div>
+      <div class="filter-row">
+        <span class="chip active">全部</span>
+        <span class="chip">咖啡</span>
+        <span class="chip">文创</span>
+        <span class="chip">小憩</span>
+        <span class="chip">旅游咨询</span>
+        <span class="chip">活动场地</span>
+      </div>
+      <div class="home-list">
+        <div class="home-card">
+          <div>
+            <div class="home-title">半亩塘艺术沙龙</div>
+            <div class="home-meta">秦皇岛 · 周六、日 9:30-16:30</div>
+            <div class="home-address">秦皇岛植物园内二楼</div>
+            <div class="tags"><span class="tag">书画体验</span><span class="tag">旅游咨询</span><span class="tag">小憩</span></div>
+          </div>
+          <div class="card-actions">
+            <div class="nav-btn">导航</div>
+            <div class="distance">1.2km</div>
+          </div>
+        </div>
+        <div class="home-card">
+          <div>
+            <div class="home-title">极漠渡</div>
+            <div class="home-meta">秦皇岛 · 周一至周日 9:00-18:00</div>
+            <div class="home-address">北戴河村太平西街-1号</div>
+            <div class="tags"><span class="tag">咖啡</span><span class="tag">活动场地</span><span class="tag">小憩</span></div>
+          </div>
+          <div class="card-actions">
+            <div class="nav-btn">导航</div>
+            <div class="distance">8.6km</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="caption">小程序主页面 · 校友地图</div>
+  </div>
+</body>
+</html>

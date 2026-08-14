@@ -1,4 +1,4 @@
-const APP_VERSION = '1.1.5'
+const APP_VERSION = '1.1.6'
 const HTTPS_API_BASE_URL = 'https://api.aluhomemap.top'
 const HTTP_API_BASE_URL = 'http://api.aluhomemap.top'
 const CLOUD_ENV = 'prod-d2gq9dsgy570dcb29'
