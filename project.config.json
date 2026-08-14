@@ -40,6 +40,9 @@
   "simulatorPluginLibVersion": {},
   "packOptions": {
     "ignore": [
+      { "value": "assets/screenshots/**", "type": "folder" },
+      { "value": "assets/covers/**", "type": "folder" },
+      { "value": "assets/photos/**", "type": "folder" },
       { "value": "校友之家备份/**", "type": "folder" },
       { "value": "docs/**", "type": "folder" },
       { "value": "scripts/**", "type": "folder" },
