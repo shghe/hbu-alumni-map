@@ -1,8 +1,7 @@
 const express = require('express')
 const router = express.Router()
 const { pool } = require('../utils/db')
-const { signUrls, normalizeCosUrl } = require('../utils/cos')
-const { validateReviewData } = require('../utils/validator')
+const { signUrls } = require('../utils/cos')
 
 // GET /api/reviews?homeId=xxx — 某个校友之家的评价
 router.get('/', async (req, res) => {
@@ -41,35 +40,9 @@ router.get('/', async (req, res) => {
   }
 })
 
-// POST /api/reviews — 提交评价
-router.post('/', async (req, res) => {
-  try {
-    const data = req.body
-    const errors = validateReviewData(data)
-    if (errors.length) return res.status(400).json({ code: 400, message: errors.join('; ') })
-
-    const homeId = parseInt(data.homeId, 10)
-
-    const [[home]] = await pool.execute('SELECT id FROM alumni_homes WHERE id = ?', [homeId])
-    if (!home) return res.status(400).json({ code: 400, message: '校友之家不存在' })
-
-    const [result] = await pool.execute(
-      'INSERT INTO reviews (home_id, nickname, rating, content) VALUES (?, ?, ?, ?)',
-      [homeId, data.nickname.trim(), data.rating, data.content.trim()]
-    )
-    const reviewId = result.insertId
-
-    const photos = [...new Set((data.photos || []).map(url => normalizeCosUrl(url)).filter(Boolean))]
-    if (photos.length > 0) {
-      const values = photos.map(url => [reviewId, url])
-      await pool.query('INSERT INTO review_photos (review_id, url) VALUES ?', [values])
-    }
-
-    res.json({ code: 0, id: String(reviewId) })
-  } catch (err) {
-    console.error('POST /reviews error:', err)
-    res.status(500).json({ code: 500, message: '提交失败' })
-  }
+// POST /api/reviews — 评论功能已关闭
+router.post('/', (req, res) => {
+  res.status(410).json({ code: 410, message: '评论功能已关闭' })
 })
 
 module.exports = router

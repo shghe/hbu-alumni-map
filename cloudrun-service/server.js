@@ -12,10 +12,11 @@ const { adminAuth } = require('./middleware/auth')
 const app = express()
 const PORT = process.env.PORT || 80
 const PUBLIC_CLIENT_KEY = process.env.PUBLIC_CLIENT_KEY || 'hbu-alumni-map-miniapp-v3'
+const CORS_ALLOW_ORIGIN = process.env.CORS_ALLOW_ORIGIN || ''
 
 app.use(express.json({ limit: '10mb' }))
 app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*')
+  if (CORS_ALLOW_ORIGIN) res.setHeader('Access-Control-Allow-Origin', CORS_ALLOW_ORIGIN)
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Range, X-WX-SERVICE, X-HBU-CLIENT')
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,HEAD,OPTIONS')
   if (req.method === 'OPTIONS') return res.status(204).end()

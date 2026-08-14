@@ -8,6 +8,10 @@ const REGION = process.env.COS_REGION || 'ap-beijing'
 const STREAM_SECRET = process.env.MEDIA_STREAM_SECRET || ''
 const MEDIA_URL_TTL = parseInt(process.env.MEDIA_URL_TTL, 10) || 7 * 24 * 60 * 60
 const COS_DOMAIN = process.env.COS_DOMAIN || process.env.COS_INTERNAL_DOMAIN || `${BUCKET}.cos-internal.${REGION}.tencentcos.cn`
+
+if (!STREAM_SECRET) {
+  console.warn('[security] MEDIA_STREAM_SECRET 未配置，媒体签名请求将被拒绝')
+}
 const cosConfig = { SecretId: SECRET_ID, SecretKey: SECRET_KEY }
 if (COS_DOMAIN) cosConfig.Domain = COS_DOMAIN
 const cos = new COS(cosConfig)
@@ -49,7 +53,7 @@ function mediaExpires() {
 }
 
 function verifyMediaSignature(key, expires, signature) {
-  if (!STREAM_SECRET) return true
+  if (!STREAM_SECRET) return false
   const exp = Number(expires)
   if (!exp || exp < Math.floor(Date.now() / 1000)) return false
   const expected = mediaSignature(key, exp)

@@ -1,9 +1,11 @@
 const jwt = require('jsonwebtoken')
-const { pool } = require('../utils/db')
-const JWT_SECRET = process.env.JWT_SECRET || 'hbu-alumni-jwt-2024-secure'
+const JWT_SECRET = process.env.JWT_SECRET
+
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET 环境变量未配置，服务拒绝启动')
+}
 
 async function adminAuth(req, res, next) {
-  // 方式1：JWT token（兼容旧逻辑）
   const authHeader = req.headers.authorization
   if (authHeader && authHeader.startsWith('Bearer ')) {
     try {
@@ -11,19 +13,6 @@ async function adminAuth(req, res, next) {
       if (payload.role === 'admin') {
         req.openid = payload.openid
         req.adminName = payload.adminName || payload.openid
-        return next()
-      }
-    } catch {}
-  }
-
-  // 方式2：云托管自动注入的 openid
-  const wxOpenid = req.headers['x-wx-openid']
-  if (wxOpenid) {
-    try {
-      const [[admin]] = await pool.execute('SELECT * FROM admins WHERE openid = ?', [wxOpenid])
-      if (admin) {
-        req.openid = wxOpenid
-        req.adminName = admin.name || wxOpenid
         return next()
       }
     } catch {}

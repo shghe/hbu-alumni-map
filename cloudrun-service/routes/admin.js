@@ -98,31 +98,41 @@ router.put('/homes/:id', async (req, res) => {
     const oldUrls = mediaKeys([...oldPhotos.map(p => p.url), oldHome.video, oldHome.video_poster])
     const newUrls = mediaKeys([...photos, video, videoPoster])
 
-    await pool.execute(
-      `UPDATE alumni_homes SET name=?, city=?, latitude=?, longitude=?, address=?, contact_name=?, phone=?, wechat=?, hours=?, description=?, video=?, video_poster=?
-       WHERE id=?`,
-      [data.name, data.city, data.latitude, data.longitude,
-       data.address || null, data.contactName || null, data.phone || null, data.wechat || null,
-       data.hours || null, data.description || null, video, videoPoster,
-       id]
-    )
+    const conn = await pool.getConnection()
+    try {
+      await conn.beginTransaction()
+      await conn.execute(
+        `UPDATE alumni_homes SET name=?, city=?, latitude=?, longitude=?, address=?, contact_name=?, phone=?, wechat=?, hours=?, description=?, video=?, video_poster=?
+         WHERE id=?`,
+        [data.name, data.city, data.latitude, data.longitude,
+         data.address || null, data.contactName || null, data.phone || null, data.wechat || null,
+         data.hours || null, data.description || null, video, videoPoster,
+         id]
+      )
 
-    // 删除不再引用的 COS 文件
+      // 重建 photos
+      await conn.execute('DELETE FROM home_photos WHERE home_id = ?', [id])
+      if (photos.length > 0) {
+        const values = photos.map((url, i) => [id, url, i])
+        await conn.query('INSERT INTO home_photos (home_id, url, sort) VALUES ?', [values])
+      }
+
+      // 重建 services
+      await conn.execute('DELETE FROM home_services WHERE home_id = ?', [id])
+      if (data.services && data.services.length > 0) {
+        const values = data.services.map(s => [id, s])
+        await conn.query('INSERT INTO home_services (home_id, service) VALUES ?', [values])
+      }
+      await conn.commit()
+    } catch (err) {
+      await conn.rollback()
+      throw err
+    } finally {
+      conn.release()
+    }
+
+    // 数据库提交成功后再删除不再引用的 COS 文件
     await deleteCosFiles(oldUrls.filter(url => !newUrls.includes(url)))
-
-    // 重建 photos
-    await pool.execute('DELETE FROM home_photos WHERE home_id = ?', [id])
-    if (photos.length > 0) {
-      const values = photos.map((url, i) => [id, url, i])
-      await pool.query('INSERT INTO home_photos (home_id, url, sort) VALUES ?', [values])
-    }
-
-    // 重建 services
-    await pool.execute('DELETE FROM home_services WHERE home_id = ?', [id])
-    if (data.services && data.services.length > 0) {
-      const values = data.services.map(s => [id, s])
-      await pool.query('INSERT INTO home_services (home_id, service) VALUES ?', [values])
-    }
 
     await logAction(req.openid, req.adminName, 'update', { homeId: id, name: data.name, city: data.city })
     res.json({ code: 0 })
@@ -146,10 +156,23 @@ router.delete('/homes/:id', async (req, res) => {
       'SELECT rp.url FROM review_photos rp JOIN reviews r ON rp.review_id = r.id WHERE r.home_id = ?', [id]
     )
 
-    const cosFailures = await deleteCosFiles([...photos.map(p => p.url), ...reviewPhotos.map(p => p.url), home.video, home.video_poster])
+    const conn = await pool.getConnection()
+    let reviewCount = 0
+    try {
+      await conn.beginTransaction()
+      const [[{ cnt }]] = await conn.execute('SELECT COUNT(*) as cnt FROM reviews WHERE home_id = ?', [id])
+      reviewCount = cnt
+      await conn.execute('DELETE FROM alumni_homes WHERE id = ?', [id])
+      await conn.commit()
+    } catch (err) {
+      await conn.rollback()
+      throw err
+    } finally {
+      conn.release()
+    }
 
-    const [[{ cnt: reviewCount }]] = await pool.execute('SELECT COUNT(*) as cnt FROM reviews WHERE home_id = ?', [id])
-    await pool.execute('DELETE FROM alumni_homes WHERE id = ?', [id])
+    // 数据库删除成功后再清理 COS，失败只记录，避免误删文件
+    const cosFailures = await deleteCosFiles([...photos.map(p => p.url), ...reviewPhotos.map(p => p.url), home.video, home.video_poster])
 
     await logAction(req.openid, req.adminName, 'delete', { homeId: id, name: home.name || '', deletedReviews: reviewCount })
     res.json({ code: 0, deletedReviews: reviewCount, cosFailed: cosFailures.length })

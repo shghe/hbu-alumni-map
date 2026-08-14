@@ -1,7 +1,6 @@
 const crypto = require('crypto')
 const dns = require('dns')
 const express = require('express')
-const { pool } = require('../utils/db')
 const { BUCKET, REGION, cos, normalizeKey, verifyMediaSignature } = require('../utils/cos')
 const jwt = require('jsonwebtoken')
 const { JWT_SECRET } = require('../middleware/auth')
@@ -28,19 +27,10 @@ async function isAdmin(req) {
       if (payload.role === 'admin') return true
     } catch {}
   }
-
-  const openid = req.headers['x-wx-openid']
-  if (!openid) return false
-  try {
-    const [[admin]] = await pool.execute('SELECT id FROM admins WHERE openid = ?', [openid])
-    return Boolean(admin)
-  } catch {
-    return false
-  }
+  return false
 }
 
 async function canUpload(req, key) {
-  if (key.startsWith('reviews/')) return true
   if (key.startsWith('homes/')) return isAdmin(req)
   return false
 }
@@ -111,9 +101,6 @@ async function downloadChunk(req, res, fallbackMime) {
   }
 }
 
-router.get('/getImg', (req, res) => downloadChunk(req, res, 'image/jpeg'))
-router.get('/getVideo', (req, res) => downloadChunk(req, res, 'video/mp4'))
-
 async function streamObject(req, res) {
   try {
     const key = normalizeKey(req.query.key)
@@ -161,7 +148,7 @@ async function streamObject(req, res) {
   } catch (e) {
     console.error('media stream error:', e)
     const status = e.statusCode === 404 || e.code === 'NoSuchKey' ? 404 : 500
-    return res.status(status).json({ code: status, message: e.message || 'stream failed' })
+    return res.status(status).json({ code: status, message: status === 404 ? '媒体不存在' : '媒体加载失败' })
   }
 }
 
@@ -178,7 +165,7 @@ router.post('/upload/init', async (req, res) => {
     res.json({ code: 0, uploadId: data.UploadId })
   } catch (e) {
     console.error('media upload init error:', e)
-    res.status(500).json({ code: 500, message: e.message })
+    res.status(500).json({ code: 500, message: '上传初始化失败' })
   }
 })
 
@@ -205,7 +192,7 @@ router.post('/upload/part', async (req, res) => {
     res.json({ code: 0, partNumber, etag: data.ETag || data.headers?.etag || '' })
   } catch (e) {
     console.error('media upload part error:', e)
-    res.status(500).json({ code: 500, message: e.message })
+    res.status(500).json({ code: 500, message: '上传分片失败' })
   }
 })
 
@@ -226,7 +213,7 @@ router.post('/upload/complete', async (req, res) => {
     res.json({ code: 0, url: key })
   } catch (e) {
     console.error('media upload complete error:', e)
-    res.status(500).json({ code: 500, message: e.message })
+    res.status(500).json({ code: 500, message: '上传完成失败' })
   }
 })
 
@@ -237,11 +224,13 @@ router.post('/upload/abort', async (req, res) => {
     if (key && uploadId) await cosCall('multipartAbort', { Bucket: BUCKET, Region: REGION, Key: key, UploadId: uploadId })
     res.json({ code: 0 })
   } catch (e) {
-    res.status(500).json({ code: 500, message: e.message })
+    console.error('media upload abort error:', e)
+    res.status(500).json({ code: 500, message: '取消上传失败' })
   }
 })
 
 router.get('/diag', async (req, res) => {
+  if (!(await isAdmin(req))) return res.status(401).json({ code: 401, message: '无权限' })
   const host = process.env.COS_DOMAIN || process.env.COS_INTERNAL_DOMAIN || `${BUCKET}.cos-internal.${REGION}.tencentcos.cn`
   dns.lookup(host, { all: true }, async (err, records) => {
     const ips = err ? [] : records.map(r => r.address)

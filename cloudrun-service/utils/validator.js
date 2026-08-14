@@ -25,8 +25,8 @@ function validateHomeData(data, requireId) {
   if (data.services && (!isArray(data.services, 20) || data.services.some(s => typeof s !== 'string' || s.length > 20))) {
     errors.push('services 最多20项，每项不超过20字')
   }
-  if (data.photos && (!isArray(data.photos, 20) || data.photos.some(p => typeof p !== 'string' || p.length > 500))) {
-    errors.push('photos 最多20张')
+  if (data.photos && (!isArray(data.photos, 10) || data.photos.some(p => typeof p !== 'string' || p.length > 500))) {
+    errors.push('photos 最多10张')
   }
   if (data.video && !isString(data.video, 500)) errors.push('video 无效')
   if (data.videoPoster && !isString(data.videoPoster, 500)) errors.push('videoPoster 无效')
